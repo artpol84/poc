@@ -1,0 +1,13 @@
+caller reserves place in the stack for all arguments.
+But passes first 6 of them through registers: edi, esi, edx, ecx, r8d, r9d
+    subq    $40, %rsp
+    movl    $10, -12(%rbp)
+    movl    $1, 16(%rsp)
+    movl    $1, 8(%rsp)
+    movl    $1, (%rsp)
+    movl    $1, %r9d
+    movl    $1, %r8d
+    movl    $1, %ecx
+    movl    $1, %edx
+    movl    $1, %esi
+    movl    $1, %edi
