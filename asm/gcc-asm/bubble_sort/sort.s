@@ -15,7 +15,7 @@ int_fmt:
 	.type	main, @function
 
 input_array:
-    /* epilog */
+    /* prolog */
     pushq %rbp
     movq %rsp, %rbp
     /* allocate space for the local variables:
@@ -81,13 +81,14 @@ input_array_loop1:
     jmp input_array_loop1
 
 input_array_exit:
+    /* epilog */
     movq -8(%rbp), %rax
     addq $32, %rsp   
     popq %rbp
     ret
 
 sort:
-    /* epilog */
+    /* prolog */
     pushq %rbp
     movq %rsp, %rbp
     /* allocate space for the local variables:
@@ -157,6 +158,7 @@ main:
     movl -12(%rbp), %edi
     call sort
 
+    /* epilog */
     addq $16, %rsp
     pop %rbp
     movl $0, %eax

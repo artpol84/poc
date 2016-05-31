@@ -4,7 +4,7 @@
 	.type	sort, @function
 
 sort:
-    /* epilog */
+    /* prolog */
     pushq %rbp
     movq %rsp, %rbp
     /* allocate space for the local variables:
@@ -51,6 +51,7 @@ sort_loop2_exit:
     jmp sort_loop1
     
 sort_exit:
+    /* epilog */
     addq $16, %rsp   
     popq %rbp
     ret
