@@ -3,53 +3,43 @@
 void sort(int size, int *array)
 {
     asm volatile (
-        "/* allocate space for the local variables:\n\t"
-        "char *arr:     -8(%rbp)\n\t"
-        "int arr_size:   -12(%rbp)\n\t"
-        "int i:          -16(%rbp)\n\t"
+        "xor %%eax, %%eax\n\t"
+        "movl %[size], %%eax\n\t"
+        "movq %%rax, %%r8\n\t"
+        "subq $1, %%r8\n\t"
 
-        "subq $16, %rsp\t\n"
-
-        "/* eax - array size\n\t"
-        "ebx - outer loop index\n\t"
-        "ecx - inner loop index\n\t"
-
-        "xor %eax, %eax\n\t"
-        "movl %edi, %eax\n\t"
-        "movq %rax, %r8\n\t"
-        "subq $1, %r8\n\t"
         "sort_loop1:\n\t"
-        "mov $0, %rax\n\t"
-        "cmpq %r8, %rax\n\t"
+        "mov $0, %%rax\n\t"
+        "cmpq %%r8, %%rax\n\t"
         "jnl sort_exit\n\t"
 
         "sort_loop2:\n\t"
-        "cmpq %r8, %rax\n\t"
+        "cmpq %%r8, %%rax\n\t"
         "jnl sort_loop2_exit\n\t"
 
-        "leaq (%rsi, %rax, 4), %r10\n\t"
-        "movl (%r10), %ebx\n\t"
-        "movl 4(%r10), %ecx\n\t"
+        "leaq (%[array], %%rax, 4), %%r10\n\t"
+        "movl (%%r10), %%ebx\n\t"
+        "movl 4(%%r10), %%ecx\n\t"
 
-        "cmpl %ecx, %ebx\n\t"
+        "cmpl %%ecx, %%ebx\n\t"
         "jng sort_loop2_next\n\t"
     
-        "movl %ecx, (%r10)\n\t"
-        "movl %ebx, 4(%r10)\n\t"
+        "movl %%ecx, (%%r10)\n\t"
+        "movl %%ebx, 4(%%r10)\n\t"
 
         "sort_loop2_next:\n\t"
     
-        "addq $1, %rax\n\t"
+        "addq $1, %%rax\n\t"
         "jmp sort_loop2\n\t"
 
         "sort_loop2_exit:\n\t"
-        "subq $1, %r8\n\t"
+        "subq $1, %%r8\n\t"
         "jmp sort_loop1\n\t"
     
         "sort_exit:\n\t"
-        "addq $16, %rsp\n\t",
-    
-
+        : 
+        : [array] "r" (array), [size] "r" (size)
+        : "rax", "rbx", "rcx", "r8", "r10" );
 }
 
 
