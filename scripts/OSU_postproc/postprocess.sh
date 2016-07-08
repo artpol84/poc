@@ -60,7 +60,11 @@ tmp2=$tdir/tmp2
 
 mkdir -p $tdir
 
-cat $1 | grep -v "^thread" | grep -v "^main" > $cleared
+cat $1 | grep -v "^thread" | grep -v "^main" | grep -v "^rank" > $cleared
+
+out_dir=`dirname $1`
+tmp_fname=`basename $1`
+out_file_prefix=${tmp_fname%%.xls}
 
 calc_header $cleared
 
@@ -82,10 +86,10 @@ count=$(( $i - 1 ))
 fields=`cat $data.0 | head -n 1 | awk '{ print NF }'`
 
 for i in `seq 2 $fields`; do
-    out_file=$1_f$i
+    out_file=$out_dir/${out_file_prefix}_f$i.xls
     cat $data.0 | awk '{ print $1 }' > $out_file
     
-    for j in `seq 1 $count`; do
+    for j in `seq 0 $count`; do
         format="{ print \$$i }"
         cat $data.$j | awk "$format" > $tmp2
         cp $out_file $tmp1
