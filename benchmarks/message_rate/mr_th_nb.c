@@ -8,12 +8,19 @@
  * $HEADER$
  */
 
+#ifndef __USE_GNU
+#define __USE_GNU
+#endif
+#define _GNU_SOURCE
+
 #include <mpi.h>
 #include <stdio.h>
 #include <pthread.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sched.h>
+#include <assert.h>
 
 #define WMB() \
 { asm volatile ("" : : : "memory"); }
@@ -23,17 +30,18 @@ void *worker_b(void *);
 void *worker_nb(void *);
 
 int threads;
-int batch_size;
+int win_size;
 int iterations;
 int warmup;
 int dup_comm;
 int msg_size;
+int binding = 0;
 
 void set_default_args()
 {
     worker = worker_nb;
     threads = 1;
-    batch_size = 256;
+    win_size = 256;
     iterations = 100;
     warmup = 10;
     dup_comm = 0;
@@ -42,6 +50,10 @@ void set_default_args()
 
 int my_host_idx = -1, my_rank_idx = -1, my_host_leader = -1;
 int  my_partner, i_am_sender = 0;
+
+/* binding-related */
+cpu_set_t my_cpuset;
+long configured_cpus;
 
 
 /* Message rate for each thread */
@@ -91,14 +103,18 @@ void sync_master()
 void usage(char *cmd)
 {
     set_default_args();
-    printf("Options: %s\n", cmd);
-    printf("\t-t\tNumber of threads (default: %d)\n", threads);
-    printf("\t-B\tBlocking send (default: %s)\n", (worker == worker_b) ? "blocking" : "non-blocking");
-    printf("\t-b\tbatch size - number of send/recvs between sync (default: %d)\n", batch_size);
-    printf("\t-n\tNumber of measured iterations (default: %d)\n", iterations);
-    printf("\t-w\tNumber of warmup iterations (default: %d)\n", warmup);
-    printf("\t-d\tUse separate communicator for each thread (default: %s)\n", (dup_comm) ? "dup" : "not dup");
-    printf("\t-s\tMessage size (default: %d)\n", msg_size);
+    fprintf(stderr, "Options: %s\n", cmd);
+    fprintf(stderr, "\t-t\tNumber of threads (default: %d)\n", threads);
+    fprintf(stderr, "\t-B\tBlocking send (default: %s)\n", (worker == worker_b) ? "blocking" : "non-blocking");
+    fprintf(stderr, "\t-b\tBinding type: {\'none\', \'fine\'} (default: %s)\n",
+           (binding) ? "fine" : "none");
+    fprintf(stderr, "\t\t\'fine\' stands for fine-graned binding inside the set provided by MPI\n");
+    fprintf(stderr, "\t\tbenchmark is able to discover node-local ranks and exchange existing binding\n");
+    fprintf(stderr, "\t-W\tWindow size - number of send/recvs between sync (default: %d)\n", win_size);
+    fprintf(stderr, "\t-n\tNumber of measured iterations (default: %d)\n", iterations);
+    fprintf(stderr, "\t-w\tNumber of warmup iterations (default: %d)\n", warmup);
+    fprintf(stderr, "\t-d\tUse separate communicator for each thread (default: %s)\n", (dup_comm) ? "dup" : "not dup");
+    fprintf(stderr, "\t-s\tMessage size (default: %d)\n", msg_size);
 }
 
 int check_unsigned(char *str)
@@ -125,11 +141,14 @@ int process_args(int argc, char **argv)
             worker = worker_b;
             break;
         case 'b':
+            binding = 1;
+            break;
+        case 'W':
             if( !check_unsigned(optarg) ){
                 goto error;
             }
-            batch_size = atoi(optarg);
-            if( batch_size == 0 ){
+            win_size = atoi(optarg);
+            if( win_size == 0 ){
                 goto error;
             }
             break;
@@ -183,6 +202,143 @@ error:
     }
     MPI_Finalize();
     exit(1);
+}
+
+char *binding_err_msgs[] = {
+    "all is OK",
+    "some nodes have more procs than CPUs. Oversubscription is not supported by now",
+    "some process have overlapping but not equal bindings. Not supported by now",
+    "some process was unable to read it's affinity",
+};
+
+enum bind_errcodes {
+    BIND_OK,
+    BIND_OVERSUBS,
+    BIND_OVERLAP,
+    BIND_GETAFF
+};
+
+void setup_binding(MPI_Comm comm)
+{
+    int grank;
+    cpu_set_t set, *all_sets;
+    int *ranks, ranks_cnt = 0, my_idx = -1;
+    int rank, size, ncpus;
+    int error_loc = 0, error;
+    int cpu_no, cpus_used = 0;
+    int i;
+
+    if( !binding ){
+        return;
+    }
+
+    /* How many cpus we have on the node */
+    configured_cpus = sysconf(_SC_NPROCESSORS_CONF);
+
+    /* MPI identifications */
+    MPI_Comm_rank(MPI_COMM_WORLD, &grank);
+    MPI_Comm_rank(comm, &rank);
+    MPI_Comm_size(comm, &size);
+    ranks = calloc(size, sizeof(*ranks));
+
+    if( sizeof(set) * 8 < configured_cpus ){
+        /* Shouldn't happen soon, currentlu # of cpus = 1024 */
+        if( 0 == grank ){
+            fprintf(stderr, "The size of CPUSET is larger that we can currently handle\n");
+        }
+        MPI_Finalize();
+        exit(1);
+    }
+
+    if( sched_getaffinity(0, sizeof(set), &set) ){
+        error_loc = BIND_GETAFF;
+    }
+
+    ncpus = CPU_COUNT(&set);
+
+    /* FIXME: not portable, do we care about heterogenious systems? */
+    all_sets = calloc( size, sizeof(set));
+    MPI_Allgather(&set, sizeof(set), MPI_BYTE, &all_sets, sizeof(set), MPI_BYTE, comm);
+
+    if( error_loc ){
+        goto finish;
+    }
+
+    /* find procs that are bound exactly like we are.
+     * Note that we don't expect overlapping set's:
+     *  - either they are the same;
+     *  - or disjoint.
+     */
+    for(i=0; i<size; i++){
+        cpu_set_t *rset = all_sets + i, cmp_set;
+        CPU_AND(&cmp_set, &set, rset);
+        if( CPU_COUNT(&cmp_set) == ncpus ){
+            /* this rank is binded as we are */
+            ranks[ ranks_cnt++ ] = i;
+        } else if( CPU_COUNT(&cmp_set) ){
+            /* other binding */
+            continue;
+        } else {
+            /* not expected. Error exit! */
+            error_loc = BIND_OVERLAP;
+            goto finish;
+        }
+    }
+
+    if( ncpus < ranks_cnt * threads ){
+        error_loc = BIND_OVERSUBS;
+    }
+
+    for(i=0; i<ranks_cnt; i++){
+        if( ranks[i] == rank ){
+            my_idx = i;
+            break;
+        }
+    }
+    /* sanity check */
+    assert(my_idx >= 0);
+
+    CPU_ZERO(&my_cpuset);
+    for(i=0; i<configured_cpus && cpus_used<threads; i++){
+        if( CPU_ISSET(i, &set) ){
+            if( cpu_no >= (my_idx * threads) ){
+                CPU_SET(i, &my_cpuset);
+                cpus_used++;
+            }
+            cpu_no++;
+        }
+    }
+
+finish:
+    MPI_Allreduce(&error_loc, &error, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
+    if( error ){
+        if( 0 == grank ){
+            fprintf(stderr, "ERROR (binding): %s\n", binding_err_msgs[error]);
+        }
+    }
+}
+
+void bind_worker(int tid)
+{
+    int i, cpu_no = 0;
+
+    if( !binding ){
+        return;
+    }
+
+    for(i=0; i<configured_cpus; i++){
+        if( CPU_ISSET(i, &my_cpuset) ){
+            if( cpu_no == tid ){
+                /* this core is mine! */
+                cpu_set_t set;
+                CPU_ZERO(&set);
+                CPU_SET(i, &set);
+                if( pthread_setaffinity_np(pthread_self(), sizeof(set), &set) ){
+                    MPI_Abort(MPI_COMM_WORLD, 0);
+                }
+            }
+        }
+    }
 }
 
 /* Split ranks to the pairs communicating with each-other.
@@ -261,6 +417,9 @@ save_rank:
         hranks_cnt[hidx]++;
     }
 
+    /* sanity check, this is already ensured by  */
+    assert( hostnum == 2 );
+
     /* return my partner */
     i_am_sender = 0;
     if( my_host_idx == 0){
@@ -275,6 +434,9 @@ save_rank:
     MPI_Comm_create(MPI_COMM_WORLD, my_grp, &comm);
     /* FIXME: do we need to free it here? Do we need to free base_grp? */
     MPI_Group_free(&my_grp);
+
+    /* discover and exchange binding info */
+    setup_binding(comm);
 
     /* release the resources */
     free( all_hosts );
@@ -377,12 +539,13 @@ void *worker_nb(void *info) {
     int rank, tag, i, j;
     double stime, etime, ttime;
     char *databuf = NULL, syncbuf;
-    MPI_Request request[ batch_size ];
-    MPI_Status  status[ batch_size ];
+    MPI_Request request[ win_size ];
+    MPI_Status  status[ win_size ];
 
     MPI_Comm_rank(MPI_COMM_WORLD,&rank);
     databuf = calloc(sizeof(char), msg_size);
     tag = tinfo->tid;
+    bind_worker(tag);
     sync_worker(tag);
 
     /* start the benchmark */
@@ -391,10 +554,10 @@ void *worker_nb(void *info) {
             if ( i == warmup ){
                 stime = MPI_Wtime();
             }
-            for(j=0; j<batch_size; j++){
+            for(j=0; j<win_size; j++){
                 MPI_Isend(databuf, msg_size, MPI_BYTE, my_partner, tag, tinfo->comm, &request[ j ]);
             }
-            MPI_Waitall(batch_size, request, status);
+            MPI_Waitall(win_size, request, status);
             MPI_Recv(&syncbuf, 0, MPI_BYTE, my_partner, tag, tinfo->comm, MPI_STATUS_IGNORE);
         }
     } else {
@@ -402,16 +565,16 @@ void *worker_nb(void *info) {
             if( i == warmup ){
                 stime = MPI_Wtime();
             }
-            for(j=0; j<batch_size; j++){
+            for(j=0; j<win_size; j++){
                 MPI_Irecv(databuf, msg_size, MPI_BYTE, my_partner, tag, tinfo->comm, &request[ j ]);
             }
-            MPI_Waitall(batch_size, request, status);
+            MPI_Waitall(win_size, request, status);
             MPI_Send(&syncbuf, 0, MPI_BYTE, my_partner, tag, tinfo->comm);
         }
     }
     etime = MPI_Wtime();
 
-    results[tag] = 1 / ((etime - stime)/ (iterations * batch_size) );
+    results[tag] = 1 / ((etime - stime)/ (iterations * win_size) );
     free(databuf);
     return 0;
 }
@@ -425,11 +588,12 @@ void *worker_b(void *info) {
     int rank, tag, i, j;
     double stime, etime, ttime;
     char *databuf, syncbuf;
-    int nsteps = ( iterations + warmup ) * batch_size;
+    int nsteps = ( iterations + warmup ) * win_size;
 
     MPI_Comm_rank(MPI_COMM_WORLD,&rank);
     databuf = calloc(sizeof(char), msg_size);
     tag = tinfo->tid;
+    bind_worker(tag);
     sync_worker(tag);
 
     if ( i_am_sender ) {
@@ -437,7 +601,7 @@ void *worker_b(void *info) {
             if( i == warmup ){
                 stime = MPI_Wtime();
             }
-            for(j=0; j<batch_size; j++){
+            for(j=0; j<win_size; j++){
                 MPI_Send(databuf, msg_size, MPI_BYTE, my_partner, tag, MPI_COMM_WORLD);
             }
             MPI_Recv(&syncbuf, 0, MPI_BYTE, my_partner, tag, MPI_COMM_WORLD,
@@ -450,13 +614,13 @@ void *worker_b(void *info) {
             if( i == warmup ){
                 stime = MPI_Wtime();
             }
-            for(j=0; j<batch_size; j++){
+            for(j=0; j<win_size; j++){
                 MPI_Recv(databuf, msg_size, MPI_BYTE, my_partner, tag, MPI_COMM_WORLD,
                          MPI_STATUS_IGNORE);
             }
             MPI_Send(&syncbuf, 0, MPI_BYTE, my_partner, tag, MPI_COMM_WORLD);
         }
     }
-    results[tag] = 1 / ((etime - stime)/ (iterations * batch_size) );
+    results[tag] = 1 / ((etime - stime)/ (iterations * win_size) );
     return 0;
 }
