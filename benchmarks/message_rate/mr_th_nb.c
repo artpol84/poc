@@ -36,6 +36,7 @@ int warmup;
 int dup_comm;
 int msg_size;
 int binding = 0;
+int want_thr_support = 1;
 
 void set_default_args()
 {
@@ -104,6 +105,9 @@ void usage(char *cmd)
 {
     set_default_args();
     fprintf(stderr, "Options: %s\n", cmd);
+    fprintf(stderr, "\t-h\tDisplay this help\n");
+    fprintf(stderr, "\t-Dthrds\tDisable threaded support (call MPI_Init) (default: %s)\n", 
+            (want_thr_support)  ? "MPI_Init_thread" : "MPI_Init");
     fprintf(stderr, "\t-t\tNumber of threads (default: %d)\n", threads);
     fprintf(stderr, "\t-B\tBlocking send (default: %s)\n", (worker == worker_b) ? "blocking" : "non-blocking");
     fprintf(stderr, "\t-b\tBinding type: {\'none\', \'fine\'} (default: %s)\n",
@@ -122,12 +126,41 @@ int check_unsigned(char *str)
     return (strlen(str) == strspn(str,"0123456789") );
 }
 
+void pre_scan_args(int argc, char **argv)
+{
+    int i;
+    /* this is a hack - you cannot access argc/argv before a call to MPI_Init[_thread].
+     * But it seems to work with most modern MPIs: Open MPI and Intel MPI was checked
+     */
+    for(i=0; i < argc; i++){
+        if( 0 == strcmp(argv[i], "-Dthrds") ){
+            want_thr_support = 0;
+        }
+    }
+}
+
 int process_args(int argc, char **argv)
 {
     int c, rank;
 
-    while((c = getopt(argc, argv, "t:Nb:n:w:ds:")) != -1) {
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    while((c = getopt(argc, argv, "hD:t:Bb:W:n:w:ds:")) != -1) {
         switch (c) {
+        case 'h':
+            if( 0 == rank ){
+                usage(argv[0]);
+            }
+            MPI_Finalize();
+            exit(0);
+            break;
+        case 'D':
+            /* from the getopt perspective thrds is an optarg. Check that 
+             * user haven't specified anything else */
+            if( strcmp( optarg, "thrds" ) ){
+                goto error;
+            }
+            break;
         case 't':
             if( !check_unsigned(optarg) ) {
                 goto error;
@@ -193,7 +226,6 @@ int process_args(int argc, char **argv)
     }
     return;
 error:
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     if(0 == rank) {
         if( c != -1 ){
             fprintf(stderr, "Bad argument of '-%c' option\n", (char)c);
@@ -449,16 +481,25 @@ save_rank:
 int main(int argc,char *argv[])
 {
     int rank, size, i, mt_level_act;
+    char *sthreaded_env;
     pthread_t *id;
     MPI_Comm comm;
 
     set_default_args();
 
-    MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &mt_level_act);
+    /* unfortunately this is hackish */
+    pre_scan_args(argc, argv);
+
+    if( want_thr_support ){
+        MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &mt_level_act);
+    } else {
+        MPI_Init(&argc, &argv);
+        mt_level_act = MPI_THREAD_SINGLE;
+    }
     MPI_Comm_size(MPI_COMM_WORLD,&size);
     MPI_Comm_rank(MPI_COMM_WORLD,&rank);
 
-    if (mt_level_act != MPI_THREAD_MULTIPLE) {
+    if (want_thr_support && mt_level_act != MPI_THREAD_MULTIPLE) {
         if( rank == 0 ){
             fprintf(stderr, "NOTE: no thread support!\n");
         }
@@ -480,14 +521,15 @@ int main(int argc,char *argv[])
     struct thread_info *ti = calloc(threads, sizeof(struct thread_info));
     results = calloc(threads, sizeof(double));
     id = calloc(threads, sizeof(*id));
+    thread_ready = calloc(threads, sizeof(int));
 
     if( threads == 1 ){
         ti[0].tid = 0;
         ti[0].comm = MPI_COMM_WORLD;
+        start_all = 1;
         worker((void*)ti);
     } else {
         /* Create the zero'ed array of ready flags for each thread */
-        thread_ready = calloc( sizeof(int), threads );
         WMB();
 
         /* setup and create threads */
@@ -538,7 +580,7 @@ void *worker_nb(void *info) {
     struct thread_info *tinfo = (struct thread_info*)info;
     int rank, tag, i, j;
     double stime, etime, ttime;
-    char *databuf = NULL, syncbuf;
+    char *databuf = NULL, syncbuf[4];
     MPI_Request request[ win_size ];
     MPI_Status  status[ win_size ];
 
@@ -558,7 +600,7 @@ void *worker_nb(void *info) {
                 MPI_Isend(databuf, msg_size, MPI_BYTE, my_partner, tag, tinfo->comm, &request[ j ]);
             }
             MPI_Waitall(win_size, request, status);
-            MPI_Recv(&syncbuf, 0, MPI_BYTE, my_partner, tag, tinfo->comm, MPI_STATUS_IGNORE);
+            MPI_Recv(syncbuf, 4, MPI_BYTE, my_partner, tag, tinfo->comm, MPI_STATUS_IGNORE);
         }
     } else {
         for (i=0; i< (iterations + warmup); i++) {
@@ -569,7 +611,7 @@ void *worker_nb(void *info) {
                 MPI_Irecv(databuf, msg_size, MPI_BYTE, my_partner, tag, tinfo->comm, &request[ j ]);
             }
             MPI_Waitall(win_size, request, status);
-            MPI_Send(&syncbuf, 0, MPI_BYTE, my_partner, tag, tinfo->comm);
+            MPI_Send(syncbuf, 4, MPI_BYTE, my_partner, tag, tinfo->comm);
         }
     }
     etime = MPI_Wtime();
