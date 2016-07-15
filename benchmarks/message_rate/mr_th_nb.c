@@ -68,17 +68,19 @@ struct thread_info
 };
 
 /* thread synchronization */
-int volatile *thread_ready = NULL;
-int volatile start_all = 0;
+int volatile sync_cur_step = 1;
+int volatile *sync_thread_ready = NULL;
+int volatile sync_start_all = 0;
 
 void sync_worker(int tid)
 {
+    int cur_step = sync_cur_step;
     WMB();
     /* now we are ready to send */
-    thread_ready[tid] = 1;
+    sync_thread_ready[tid] = sync_cur_step;
     WMB();
     /* wait for everybody */
-    while( !start_all ){
+    while( sync_start_all != cur_step ){
         usleep(1);
     }
 }
@@ -86,10 +88,12 @@ void sync_worker(int tid)
 void sync_master()
 {
     int i;
+    int cur_step = sync_cur_step;
     /* wait for all threads to start */
     WMB();
+
     for(i=0; i<threads; i++){
-        while( !thread_ready[i] ){
+        while( sync_thread_ready[i] != cur_step ){
             usleep(10);
         }
     }
@@ -97,10 +101,10 @@ void sync_master()
     /* Synchronize all processes */
     WMB();
     MPI_Barrier(MPI_COMM_WORLD);
-
+    sync_cur_step++;
     /* signal threads to start */
     WMB();
-    start_all = 1;
+    sync_start_all = cur_step;
 }
 
 void usage(char *cmd)
@@ -112,9 +116,7 @@ void usage(char *cmd)
             (want_thr_support)  ? "MPI_Init_thread" : "MPI_Init");
     fprintf(stderr, "\t-t\tNumber of threads (default: %d)\n", threads);
     fprintf(stderr, "\t-B\tBlocking send (default: %s)\n", (worker == worker_b) ? "blocking" : "non-blocking");
-    fprintf(stderr, "\t-b\tBinding type: {\'none\', \'fine\'} (default: %s)\n",
-           (binding) ? "fine" : "none");
-    fprintf(stderr, "\t\t\'fine\' stands for fine-graned binding inside the set provided by MPI\n");
+    fprintf(stderr, "\t-b\tEnable fine-grained binding of the threads inside the set provided by MPI\n");
     fprintf(stderr, "\t\tbenchmark is able to discover node-local ranks and exchange existing binding\n");
     fprintf(stderr, "\t-W\tWindow size - number of send/recvs between sync (default: %d)\n", win_size);
     fprintf(stderr, "\t-n\tNumber of measured iterations (default: %d)\n", iterations);
@@ -147,7 +149,7 @@ int process_args(int argc, char **argv)
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    while((c = getopt(argc, argv, "hD:t:Bb:W:n:w:ds:")) != -1) {
+    while((c = getopt(argc, argv, "hD:t:BbW:n:w:ds:")) != -1) {
         switch (c) {
         case 'h':
             if( 0 == rank ){
@@ -292,7 +294,7 @@ void setup_binding(MPI_Comm comm)
 
     /* FIXME: not portable, do we care about heterogenious systems? */
     all_sets = calloc( size, sizeof(set));
-    MPI_Allgather(&set, sizeof(set), MPI_BYTE, &all_sets, sizeof(set), MPI_BYTE, comm);
+    MPI_Allgather(&set, sizeof(set), MPI_BYTE, all_sets, sizeof(set), MPI_BYTE, comm);
 
     if( error_loc ){
         goto finish;
@@ -309,7 +311,7 @@ void setup_binding(MPI_Comm comm)
         if( CPU_COUNT(&cmp_set) == ncpus ){
             /* this rank is binded as we are */
             ranks[ ranks_cnt++ ] = i;
-        } else if( CPU_COUNT(&cmp_set) ){
+        } else if( !CPU_COUNT(&cmp_set) ){
             /* other binding */
             continue;
         } else {
@@ -370,9 +372,30 @@ void bind_worker(int tid)
                 if( pthread_setaffinity_np(pthread_self(), sizeof(set), &set) ){
                     MPI_Abort(MPI_COMM_WORLD, 0);
                 }
+                break;
+            }
+            cpu_no++;
+        }
+    }
+
+#ifdef DEBUG
+    if( 0 == my_host_idx ){
+        int rank;
+        cpu_set_t set;
+
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        if( pthread_getaffinity_np(pthread_self(), sizeof(set), &set) ){
+            MPI_Abort(MPI_COMM_WORLD, 0);
+        }
+        for(i=0; i<configured_cpus; i++){
+            if( CPU_ISSET(i, &set) ){
+                fprintf(stderr, "%d:%d: %d\n", rank, tid, i);
             }
         }
     }
+#endif
+
+
 }
 
 /* Split ranks to the pairs communicating with each-other.
@@ -537,12 +560,16 @@ int main(int argc,char *argv[])
     struct thread_info *ti = calloc(threads, sizeof(struct thread_info));
     results = calloc(threads, sizeof(double));
     id = calloc(threads, sizeof(*id));
-    thread_ready = calloc(threads, sizeof(int));
+    sync_thread_ready = calloc(threads, sizeof(int));
 
     if( threads == 1 ){
         ti[0].tid = 0;
-        ti[0].comm = MPI_COMM_WORLD;
-        start_all = 1;
+        if( dup_comm ) {
+            MPI_Comm_dup(MPI_COMM_WORLD, &ti[i].comm );
+        } else {
+            ti[i].comm = MPI_COMM_WORLD;
+        }
+        sync_start_all = sync_cur_step;
         worker((void*)ti);
     } else {
         /* Create the zero'ed array of ready flags for each thread */
@@ -566,6 +593,12 @@ int main(int argc,char *argv[])
             pthread_join(id[i], NULL);
     }
 
+    char tmp[1024] = "";
+    for(i=0; i<threads; i++){
+        sprintf(tmp, "%s%lf ", tmp, results[i]);
+    }
+    printf("%s\n", tmp);
+
     if ( i_am_sender ){
         /* FIXME: for now only count on sender side, extend if makes sense */
         double results_rank = 0, results_node = 0;
@@ -577,6 +610,12 @@ int main(int argc,char *argv[])
 
         if( my_rank_idx == 0 ){
             printf("%d\t%lf\n", msg_size, results_node);
+        }
+    }
+
+    if( dup_comm ){
+        for (i=0; i<threads; i++) {
+            MPI_Comm_free(&ti[i].comm);
         }
     }
 
@@ -595,7 +634,7 @@ int main(int argc,char *argv[])
 void *worker_nb(void *info) {
     struct thread_info *tinfo = (struct thread_info*)info;
     int rank, tag, i, j;
-    double stime, etime, ttime;
+    double stime, etime;
     char *databuf = NULL, syncbuf[4];
     MPI_Request request[ win_size ];
     MPI_Status  status[ win_size ];
@@ -604,12 +643,13 @@ void *worker_nb(void *info) {
     databuf = calloc(sizeof(char), msg_size);
     tag = tinfo->tid;
     bind_worker(tag);
-    sync_worker(tag);
 
     /* start the benchmark */
     if ( i_am_sender ) {
         for (i=0; i < (iterations + warmup); i++) {
             if ( i == warmup ){
+                /* ensure that all threads start "almost" together */
+                sync_worker(tag);
                 stime = MPI_Wtime();
             }
             for(j=0; j<win_size; j++){
@@ -621,6 +661,8 @@ void *worker_nb(void *info) {
     } else {
         for (i=0; i< (iterations + warmup); i++) {
             if( i == warmup ){
+                /* ensure that all threads start "almost" together */
+                sync_worker(tag);
                 stime = MPI_Wtime();
             }
             for(j=0; j<win_size; j++){
@@ -652,11 +694,12 @@ void *worker_b(void *info) {
     databuf = calloc(sizeof(char), msg_size);
     tag = tinfo->tid;
     bind_worker(tag);
-    sync_worker(tag);
 
     if ( i_am_sender ) {
         for (i=0; i < iterations + warmup; i++) {
             if( i == warmup ){
+                /* ensure that all threads start "almost" together */
+                sync_worker(tag);
                 stime = MPI_Wtime();
             }
             for(j=0; j<win_size; j++){
@@ -670,6 +713,8 @@ void *worker_b(void *info) {
     else {
         for (i=0; i < iterations + warmup; i++) {
             if( i == warmup ){
+                /* ensure that all threads start "almost" together */
+                sync_worker(tag);
                 stime = MPI_Wtime();
             }
             for(j=0; j<win_size; j++){
