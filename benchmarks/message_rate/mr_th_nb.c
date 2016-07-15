@@ -22,6 +22,8 @@
 #include <sched.h>
 #include <assert.h>
 
+#define DEBUG
+
 #define WMB() \
 { asm volatile ("" : : : "memory"); }
 
@@ -451,6 +453,20 @@ save_rank:
 
     /* sanity check, this is already ensured by  */
     assert( hostnum == 2 );
+    
+#ifdef DEBUG
+    if( 0 == rank ){
+        /* output the rank mapping */
+        for(i=0; i<2; i++){
+            int j;
+            printf("%s: ", hnames[i]);
+            for(j=0; j<hranks_cnt[i]; j++){
+                printf("%d ", hranks[i][j]);
+            }
+            printf("\n");
+        }
+    }
+#endif
 
     /* return my partner */
     i_am_sender = 0;
