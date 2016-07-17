@@ -1,6 +1,6 @@
 
-CFLAGS ?= -g -O0
-MPICC = mpicc
+CFLAGS ?= -g -O2
+MPICC ?= mpicc
 
 all: mr_th_nb.c
 	$(MPICC) $(CFLAGS) -o mr_th_nb mr_th_nb.c

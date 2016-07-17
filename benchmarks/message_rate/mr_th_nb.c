@@ -22,7 +22,7 @@
 #include <sched.h>
 #include <assert.h>
 
-#define DEBUG
+//#define DEBUG
 
 #define WMB() \
 { asm volatile ("" : : : "memory"); }
@@ -708,7 +708,6 @@ void *worker_b(void *info) {
             MPI_Recv(&syncbuf, 0, MPI_BYTE, my_partner, tag, MPI_COMM_WORLD,
                      MPI_STATUS_IGNORE);
         }
-        etime = MPI_Wtime();
     }
     else {
         for (i=0; i < iterations + warmup; i++) {
@@ -724,6 +723,7 @@ void *worker_b(void *info) {
             MPI_Send(&syncbuf, 0, MPI_BYTE, my_partner, tag, MPI_COMM_WORLD);
         }
     }
+    etime = MPI_Wtime();
     results[tag] = 1 / ((etime - stime)/ (iterations * win_size) );
     return 0;
 }
