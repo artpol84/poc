@@ -593,11 +593,13 @@ int main(int argc,char *argv[])
             pthread_join(id[i], NULL);
     }
 
+#ifdef DEBUG
     char tmp[1024] = "";
     for(i=0; i<threads; i++){
         sprintf(tmp, "%s%lf ", tmp, results[i]);
     }
     printf("%s\n", tmp);
+#endif
 
     if ( i_am_sender ){
         /* FIXME: for now only count on sender side, extend if makes sense */
