@@ -217,9 +217,6 @@ int process_args(int argc, char **argv)
             }
             break;
         case 'd':
-            if( !check_unsigned(optarg) ){
-                goto error;
-            }
             dup_comm = 1;
             break;
 
