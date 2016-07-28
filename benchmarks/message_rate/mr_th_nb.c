@@ -39,6 +39,7 @@ int dup_comm;
 int msg_size;
 int binding = 0;
 int want_thr_support = 1;
+int intra_node = 0;
 
 void set_default_args()
 {
@@ -51,7 +52,7 @@ void set_default_args()
     msg_size = 0;
 }
 
-int my_host_idx = -1, my_rank_idx = -1, my_host_leader = -1;
+int my_host_idx = -1, my_rank_idx = -1, my_leader = -1;
 int  my_partner, i_am_sender = 0;
 
 /* binding-related */
@@ -112,17 +113,22 @@ void usage(char *cmd)
     set_default_args();
     fprintf(stderr, "Options: %s\n", cmd);
     fprintf(stderr, "\t-h\tDisplay this help\n");
+    fprintf(stderr, "Test description:\n");
+    fprintf(stderr, "\t-s\tMessage size (default: %d)\n", msg_size);
+    fprintf(stderr, "\t-n\tNumber of measured iterations (default: %d)\n", iterations);
+    fprintf(stderr, "\t-w\tNumber of warmup iterations (default: %d)\n", warmup);
+    fprintf(stderr, "\t-W\tWindow size - number of send/recvs between sync (default: %d)\n", win_size);
+    fprintf(stderr, "Test options:\n");
     fprintf(stderr, "\t-Dthrds\tDisable threaded support (call MPI_Init) (default: %s)\n", 
             (want_thr_support)  ? "MPI_Init_thread" : "MPI_Init");
     fprintf(stderr, "\t-t\tNumber of threads (default: %d)\n", threads);
     fprintf(stderr, "\t-B\tBlocking send (default: %s)\n", (worker == worker_b) ? "blocking" : "non-blocking");
+    fprintf(stderr, "\t-S\tSMP mode - intra-node performance - pairwise exchanges (default: %s)\n", 
+            (intra_node) ? "enabled" : "disabled" );
+    fprintf(stderr, "\t-d\tUse separate communicator for each thread (default: %s)\n", (dup_comm) ? "enabled" : "disabled");
     fprintf(stderr, "\t-b\tEnable fine-grained binding of the threads inside the set provided by MPI\n");
     fprintf(stderr, "\t\tbenchmark is able to discover node-local ranks and exchange existing binding\n");
-    fprintf(stderr, "\t-W\tWindow size - number of send/recvs between sync (default: %d)\n", win_size);
-    fprintf(stderr, "\t-n\tNumber of measured iterations (default: %d)\n", iterations);
-    fprintf(stderr, "\t-w\tNumber of warmup iterations (default: %d)\n", warmup);
-    fprintf(stderr, "\t-d\tUse separate communicator for each thread (default: %s)\n", (dup_comm) ? "dup" : "not dup");
-    fprintf(stderr, "\t-s\tMessage size (default: %d)\n", msg_size);
+    fprintf(stderr, "\t\t(default: %s)\n", (binding) ? "enabled" : "disabled");
 }
 
 int check_unsigned(char *str)
@@ -149,7 +155,7 @@ int process_args(int argc, char **argv)
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    while((c = getopt(argc, argv, "hD:t:BbW:n:w:ds:")) != -1) {
+    while((c = getopt(argc, argv, "hD:t:BbW:n:w:ds:S")) != -1) {
         switch (c) {
         case 'h':
             if( 0 == rank ){
@@ -219,7 +225,9 @@ int process_args(int argc, char **argv)
         case 'd':
             dup_comm = 1;
             break;
-
+        case 'S':
+            intra_node = 1;
+            break;
         default:
             c = -1;
             goto error;
@@ -293,6 +301,7 @@ void setup_binding(MPI_Comm comm)
     all_sets = calloc( size, sizeof(set));
     MPI_Allgather(&set, sizeof(set), MPI_BYTE, all_sets, sizeof(set), MPI_BYTE, comm);
 
+
     if( error_loc ){
         goto finish;
     }
@@ -331,6 +340,7 @@ void setup_binding(MPI_Comm comm)
     /* sanity check */
     assert(my_idx >= 0);
 
+    cpu_no = 0;
     CPU_ZERO(&my_cpuset);
     for(i=0; i<configured_cpus && cpus_used<threads; i++){
         if( CPU_ISSET(i, &set) ){
@@ -391,8 +401,6 @@ void bind_worker(int tid)
         }
     }
 #endif
-
-
 }
 
 /* Split ranks to the pairs communicating with each-other.
@@ -410,7 +418,7 @@ MPI_Comm split_to_pairs()
     char hname[MAX_HOSTHAME], *all_hosts, hnames[MAX_HOSTS][MAX_HOSTHAME];
     int i, j, hostnum = 0, *hranks[MAX_HOSTS], hranks_cnt[MAX_HOSTS] = {0, 0};
     MPI_Group base_grp, my_grp;
-    MPI_Comm comm;
+    MPI_Comm comm, bind_comm;
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -430,7 +438,7 @@ MPI_Comm split_to_pairs()
     MPI_Allgather(hname, max_len, MPI_CHAR, all_hosts, max_len, MPI_CHAR, MPI_COMM_WORLD);
 
     for(i = 0; i < MAX_HOSTS; i++){
-        hranks[i] = calloc(sizeof(int), size / 2);
+        hranks[i] = calloc(sizeof(int), size);
     }
 
     for( i = 0; i < size; i++){
@@ -456,13 +464,6 @@ MPI_Comm split_to_pairs()
         hidx = hostnum;
         hostnum++;
 save_rank:
-        if( hranks_cnt[hidx] >= (size / 2) ){
-            if( rank == 0 ){
-                fprintf(stderr,"Ranks are non-evenly distributed on the nodes!\n");
-            }
-            MPI_Finalize();
-            exit(1);
-        }
         hranks[hidx][hranks_cnt[hidx]] = i;
         if( i == rank ){
             my_host_idx = hidx;
@@ -472,12 +473,15 @@ save_rank:
     }
 
     /* sanity check, this is already ensured by  */
-    assert( hostnum == 2 );
-    
+    if( !intra_node )
+        assert( hostnum == 2 );
+    else
+        assert( hostnum == 1 );
+
 #ifdef DEBUG
     if( 0 == rank ){
-        /* output the rank mapping */
-        for(i=0; i<2; i++){
+        /* output the rank-node mapping */
+        for(i=0; i < hostnum; i++){
             int j;
             printf("%s: ", hnames[i]);
             for(j=0; j<hranks_cnt[i]; j++){
@@ -488,27 +492,62 @@ save_rank:
     }
 #endif
 
-    /* return my partner */
-    i_am_sender = 0;
-    if( my_host_idx == 0){
-        i_am_sender = 1;
-    }
-    my_partner = hranks[ (my_host_idx + 1) % MAX_HOSTS ][my_rank_idx];
-    my_host_leader = hranks[ my_host_idx ][0];
 
-    /* create the communicator for all senders */
-    MPI_Comm_group(MPI_COMM_WORLD, &base_grp);
-    MPI_Group_incl(base_grp, size/2, hranks[my_host_idx], &my_grp);
-    MPI_Comm_create(MPI_COMM_WORLD, my_grp, &comm);
-    /* FIXME: do we need to free it here? Do we need to free base_grp? */
-    MPI_Group_free(&my_grp);
+    if( !intra_node ){
+
+        /* sanity check */
+        if( hranks_cnt[0] != (size / 2) ){
+            if( rank == 0 ){
+                fprintf(stderr,"Ranks are non-evenly distributed on the nodes!\n");
+            }
+            MPI_Finalize();
+            exit(1);
+        }
+
+        /* return my partner */
+        i_am_sender = 0;
+        if( my_host_idx == 0){
+            i_am_sender = 1;
+        }
+        my_partner = hranks[ (my_host_idx + 1) % MAX_HOSTS ][my_rank_idx];
+        my_leader = hranks[ my_host_idx ][0];
+    
+        /* create the communicator for all senders */
+        MPI_Comm_group(MPI_COMM_WORLD, &base_grp);
+        MPI_Group_incl(base_grp, size/2, hranks[my_host_idx], &my_grp);
+        MPI_Comm_create(MPI_COMM_WORLD, my_grp, &comm);
+        /* FIXME: do we need to free it here? Do we need to free base_grp? */
+        MPI_Group_free(&my_grp);
+        bind_comm = comm;
+    } else {
+        /* sanity check */
+        if( hranks_cnt[0] != size ){
+            if( rank == 0 ){
+                fprintf(stderr,"Ranks are non-evenly distributed on the nodes!\n");
+            }
+            MPI_Finalize();
+            exit(1);
+        }
+
+        /* return my partner */
+        i_am_sender = 0;
+        if( my_rank_idx % 2 == 0){
+            i_am_sender = 1;
+        }
+        my_partner = hranks[0][ my_rank_idx + ( 1 - 2 * (my_rank_idx % 2)) ];
+        my_leader = my_rank_idx % 2;
+    
+        /* create the communicator for all senders */
+        MPI_Comm_split(MPI_COMM_WORLD, my_rank_idx % 2, my_rank_idx, &comm);
+        bind_comm = MPI_COMM_WORLD;
+    }
 
     /* discover and exchange binding info */
-    setup_binding(comm);
+    setup_binding(bind_comm);
 
     /* release the resources */
     free( all_hosts );
-    for(i = 0; i < MAX_HOSTS; i++){
+    for(i = 0; i < hostnum; i++){
         free( hranks[i] );
     }
     return comm;
@@ -554,6 +593,7 @@ int main(int argc,char *argv[])
 
     comm = split_to_pairs();
 
+
     struct thread_info *ti = calloc(threads, sizeof(struct thread_info));
     results = calloc(threads, sizeof(double));
     id = calloc(threads, sizeof(*id));
@@ -592,6 +632,7 @@ int main(int argc,char *argv[])
 
 #ifdef DEBUG
     char tmp[1024] = "";
+    sprintf(tmp, "%d: ", rank);
     for(i=0; i<threads; i++){
         sprintf(tmp, "%s%lf ", tmp, results[i]);
     }
@@ -605,7 +646,7 @@ int main(int argc,char *argv[])
         for(i=0; i<threads; i++){
             results_rank += results[i];
         }
-        MPI_Reduce(&results_rank, &results_node, 1, MPI_DOUBLE, MPI_SUM, my_host_leader, comm);
+        MPI_Reduce(&results_rank, &results_node, 1, MPI_DOUBLE, MPI_SUM, my_leader, comm);
 
         if( my_rank_idx == 0 ){
             printf("%d\t%lf\n", msg_size, results_node);
