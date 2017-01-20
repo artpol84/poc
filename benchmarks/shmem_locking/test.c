@@ -104,14 +104,21 @@ int main(int argc, char **argv)
 
     MPI_Barrier(MPI_COMM_WORLD);
 
+    printf("Data correctness verification\n");
     // Correctness verification
     if( 0 == rank ){
         for(i=0; i<100; i++){
-            printf("Step #%d\n", i);
-            fflush(stdout);
+//            if( (i % 10) == 9 ){
+                 printf("Step #%d\n", i);
+                 fflush(stdout);
+//            }
             shared_rwlock_wlock(&data->lock);
-            MPI_Barrier(MPI_COMM_WORLD);
             data->counter1++;
+            /* To verify that locking works - release readers
+             * now and sleep to let them a chance to hit
+             * inconsistent data
+             */
+            MPI_Barrier(MPI_COMM_WORLD);
             usleep(100);
             data->counter2++;
             shared_rwlock_unlock(&data->lock);
@@ -121,11 +128,11 @@ int main(int argc, char **argv)
         for(i=0; i<100; i++){
             MPI_Barrier(MPI_COMM_WORLD);
             shared_rwlock_rlock(&data->lock);
-            MPI_Barrier(MPI_COMM_WORLD);
             if( data->counter1 != data->counter2 ){
                 fprintf(stderr, "%d: data corruption, i=%d\n", rank, i);
                 MPI_Abort(MPI_COMM_WORLD, 1);
             }
+            MPI_Barrier(MPI_COMM_WORLD);
             shared_rwlock_unlock(&data->lock);
         }
     }    

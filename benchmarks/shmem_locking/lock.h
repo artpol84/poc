@@ -1,15 +1,24 @@
 #ifndef MY_LOCK_H
 #define MY_LOCK_H
 
-#ifdef MY_FLOCK
-#ifdef MY_PTHREAD
-#error "Can't define both MY_FLOCK and MY_PTHREAD"
+#if ((MY_FLOCK + MY_PTHREAD + MY_DUMMY) > 1 )
+#error "Use one and only one locking type at the time"
 #endif
+
+#if ((MY_FLOCK + MY_PTHREAD + MY_DUMMY) == 0 )
+#error "Use one and only one locking type at the time"
+#endif
+    
+#if (MY_FLOCK == 1)
 #include "flock.h"
 #endif
 
-#ifdef MY_PTHREAD
+#if (MY_PTHREAD == 1)
 #include "pthread.h"
+#endif
+
+#if (MY_DUMMY == 1)
+#include "dummy.h"
 #endif
 
 int shared_rwlock_create(my_lock_t *lock);
