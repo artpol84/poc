@@ -112,7 +112,7 @@ int main(int argc, char **argv)
         printf("Data correctness verification\n");
         for(i=0; i<100; i++){
             if( (i % 10) == 9 ){
-                 printf("Step #%d%%\n", (i+1)/10);
+                 printf("Step #%d%%\n", (i+1));
                  fflush(stdout);
             }
             shared_rwlock_wlock(&data->lock);
@@ -207,7 +207,7 @@ int main(int argc, char **argv)
     } else {
 
         int cur_count = 0;
-        while( cur_count < 8000 ){
+        while( cur_count < 10000 ){
             gettimeofday(&tv, NULL);
             start = tv.tv_sec + 1E-6*tv.tv_usec;
             shared_rwlock_rlock(&data->lock);
@@ -231,6 +231,7 @@ int main(int argc, char **argv)
         printf("%d: Writer/reader: Time to do 10000 lock/unlocks = %lf\n",
                 rank, perf2);
     }
+
     MPI_Barrier(MPI_COMM_WORLD);
     if( rank == 1){
         printf("%d: Writer/reader: Time to do 10000 lock/unlocks = %lf\n",
