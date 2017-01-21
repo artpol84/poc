@@ -149,7 +149,7 @@ void pre_scan_args(int argc, char **argv)
     }
 }
 
-int process_args(int argc, char **argv)
+void process_args(int argc, char **argv)
 {
     int c, rank;
 
