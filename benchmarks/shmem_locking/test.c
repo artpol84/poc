@@ -82,6 +82,9 @@ int main(int argc, char **argv)
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+    struct timeval tv;
+    double time = 0, start, init_time = 0;
+
     {
         int delay = 0;
         while( delay ){
@@ -89,6 +92,8 @@ int main(int argc, char **argv)
         }
     }
 
+    gettimeofday(&tv, NULL);
+    start = tv.tv_sec + 1E-6*tv.tv_usec;
     if( 0 == rank ) {
         membase = create_seg(segname, 4096);
         data = (struct my*)membase;
@@ -96,14 +101,20 @@ int main(int argc, char **argv)
         data->counter2 = 0;
         shared_rwlock_create(&data->lock);
     }
+    gettimeofday(&tv, NULL);
+    init_time += (tv.tv_sec + 1E-6*tv.tv_usec) - start;
 
     MPI_Barrier(MPI_COMM_WORLD);
 
+    gettimeofday(&tv, NULL);
+    start = tv.tv_sec + 1E-6*tv.tv_usec;
     if( 0 != rank ){
         membase = attach_seg(segname, 4096);
         data = (struct my*)membase;
         shared_rwlock_init(&data->lock);
     }
+    gettimeofday(&tv, NULL);
+    init_time += (tv.tv_sec + 1E-6*tv.tv_usec) - start;
 
     MPI_Barrier(MPI_COMM_WORLD);
 
@@ -150,8 +161,6 @@ int main(int argc, char **argv)
     MPI_Barrier(MPI_COMM_WORLD);
     
     
-    struct timeval tv;
-    double time = 0, start;
     if (0 == rank) {
         printf("Performance evaluation: writer only\n");
         for(i=0; i<10000; i++){
@@ -226,6 +235,7 @@ int main(int argc, char **argv)
 
     MPI_Barrier(MPI_COMM_WORLD);
     if( rank == 0){
+        printf("%d: init time: %lf\n", rank, init_time);
         printf("%d: Writer-only: Time to do 10000 lock/unlocks = %lf\n",
                 rank, perf1);
         printf("%d: Writer/reader: Time to do 10000 lock/unlocks = %lf\n",
@@ -234,6 +244,7 @@ int main(int argc, char **argv)
 
     MPI_Barrier(MPI_COMM_WORLD);
     if( rank == 1){
+        printf("%d: init time: %lf\n", rank, init_time);
         printf("%d: Writer/reader: Time to do 10000 lock/unlocks = %lf\n",
                 rank, perf2);
     }
