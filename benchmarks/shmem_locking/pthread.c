@@ -16,6 +16,9 @@ int shared_rwlock_create(my_lock_t *lock)
     pthread_rwlockattr_t attr;
     pthread_rwlockattr_init(&attr);
     pthread_rwlockattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
+#if (MY_PTHREAD_PRIO == 1)
+    pthread_rwlockattr_setkind_np(&attr, PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
+#endif
     pthread_rwlock_init(lock, &attr);
     pthread_rwlockattr_destroy(&attr);
     init_by_me = 1;
