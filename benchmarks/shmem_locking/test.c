@@ -26,12 +26,47 @@
     ret;                                    \
 })
 
+/*
+#define GET_TS() ({                         \
+    struct timeval tv;                      \
+    double ret = 0;                         \
+    gettimeofday(&tv, NULL);                \
+    ret = tv.tv_sec + 1E-6*tv.tv_usec;      \
+    ret;                                    \
+})
+*/
+
+#define WMB() \
+{ asm volatile ("" : : : "memory"); }
+
 
 int seg_fd;
 int rank, size;
 int verbose = 0;
 int nordwr = 0;
 int print_header = 1;
+unsigned long us1;
+
+#define usleep_my(x) {                  \
+    unsigned long i;                    \
+    int j;                              \
+    for(j=0; j < x; j++){               \
+        for(i = 0; i < us1; i++){       \
+            asm("");                    \
+        }                               \
+    }                                   \
+}
+
+#define nsleep_my(x) {                  \
+    unsigned long i;                    \
+    double iters = (double)us1*x/1000;  \
+    for(i = 0; i < iters; i++){    \
+        asm("");                    \
+    }                               \
+}
+
+#define SQUARE(x) (x * x)
+
 
 void print_usage(char *pname)
 {
@@ -82,18 +117,11 @@ struct my {
 
 struct my *data = NULL;
 
-inline void nsleep(size_t nsec)
-{
-    struct timespec ts, ts1;
-    ts.tv_sec = nsec / 1000000000;
-    ts.tv_nsec = nsec % 1000000000;
-    nanosleep(&ts, &ts1);
-}
-
 void *create_seg(char *fname, int size)
 {
     void * seg_addr = NULL;
 
+    unlink(fname);
     if (-1 == (seg_fd = open(fname, O_CREAT | O_RDWR, 0600))) {
         fprintf(stderr, "%d: can't open %s\n", rank, fname);
         MPI_Abort(MPI_COMM_WORLD, 1);
@@ -157,6 +185,75 @@ void reset_data(struct my *data)
     MPI_Barrier(MPI_COMM_WORLD);
 }
 
+void calibrate_sleep(struct my *data)
+{
+    double time;
+    
+    reset_data(data);
+ 
+    if( 0 == rank ){
+        unsigned long best_estim, up_border, step;
+        double best_time;
+        for(us1 = 0; us1 < 10000; us1++){
+            asm("");
+        }
+
+        /* step1: rude estimation going down from 1E6 iters */
+        us1 = 1000000;
+        time = GET_TS();
+        usleep_my(1);
+        time = GET_TS() - time;
+
+        best_estim = us1;
+        best_time = time;
+        
+        for(us1/=10; us1 > 0; us1/=10){
+            time = GET_TS();
+            usleep_my(1);
+            time = GET_TS() - time;
+            if( SQUARE(best_time - 1E-06) > SQUARE(time - 1E-06) ){
+                best_estim = us1;
+                best_time = time;
+            }
+            if( time < 1E-06 ){
+                break;
+            }
+        }
+
+        /* step1: finer estimation going up with smaller steps */
+        up_border = us1*10;
+        step = us1;
+        for(; us1 < up_border; us1 += step)
+        {
+            time = GET_TS();
+            usleep_my(1);
+            time = GET_TS() - time;
+            if( SQUARE(best_time - 1E-06) > SQUARE(time - 1E-06) ){
+                best_estim = us1;
+                best_time = time;
+            }
+        }
+            
+        us1 = best_estim;
+        VERBOSE_OUT(verbose,"Calibration: 1us = %zd iters\n", us1);
+        
+        /* Make sure that we finish with calculation first */
+        WMB();
+        data->counter1 = 1;
+        
+    } else {
+        /* MPI_Bcast may cause heavy progress and keep
+         * CPU busy, instead we want a quiet environment.
+         * Use shared memory segment to sync.
+         */
+        while( data->counter1 == 0 ){
+            sleep(1);
+        }
+    }
+    MPI_Bcast(&us1, 1, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD);
+}   
+
+
 void verification(struct my *data)
 {
     int i;
@@ -181,7 +278,7 @@ void verification(struct my *data)
              * inconsistent data
              */
             MPI_Barrier(MPI_COMM_WORLD);
-            usleep(100);
+            usleep_my(100);
             data->counter2++;
             shared_rwlock_unlock(&data->lock);
             MPI_Barrier(MPI_COMM_WORLD);
@@ -255,7 +352,7 @@ void rdonly_test(struct my* data, double *perf)
             if( 1 == rank ){
                 data->counter1++;
             }
-            nsleep(500);
+            usleep_my(10);
             start = GET_TS();
             shared_rwlock_unlock(&data->lock);
             time += GET_TS() - start;
@@ -272,6 +369,8 @@ void rdwr_test(struct my *data, double *rlock_avg_cnt,
     int prev_barrier = 0;
     unsigned long rlock_cnt = 0, rlock_cnt_cum = 0;
     int i;
+    double rd_delay = 0, rd_delay_cum, wr_delay = 0;
+    double rd_delay_tot = 0, rd_delay_tot_cum;
 
     reset_data(data);
 
@@ -305,7 +404,9 @@ void rdwr_test(struct my *data, double *rlock_avg_cnt,
             lock_time += GET_TS() - lock_start;
 
             /* Sleep proportionally to the number of procs */
-            usleep(size);
+            double tmp = GET_TS();
+            usleep_my(size);
+            wr_delay += GET_TS() - tmp;
         }
         *wr_lock_time_out = lock_time;
         *wr_time_out = GET_TS() - wr_start;
@@ -313,20 +414,32 @@ void rdwr_test(struct my *data, double *rlock_avg_cnt,
         int cur_count = 0;
         int prev_barrier = 0;
         int i = 0;
+        double time = 0, start;
         while( cur_count < WR_REPS ){
             /* almost busy-looping :) */
             shared_rwlock_rlock(&data->lock);
 
             cur_count = data->counter1;
-            nsleep(100);
+            
+            start = GET_TS();
+            usleep_my(10);
+            time += GET_TS() - start;
 
             shared_rwlock_unlock(&data->lock);
             rlock_cnt++;
         }
+        rd_delay = time / rlock_cnt;
+        rd_delay_tot = time;
     }
     MPI_Reduce(&rlock_cnt, &rlock_cnt_cum, 1, MPI_UNSIGNED_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
     *rlock_avg_cnt = (double)rlock_cnt_cum / (size - 1);
-
+    
+    MPI_Reduce(&rd_delay, &rd_delay_cum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&rd_delay_tot, &rd_delay_tot_cum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    if( rank == 0 ){
+        VERBOSE_OUT(verbose, "Avg rd_delay_tot = %le, rd_delay=%le, wr_delay_tot = %le, wr_delay = %le\n", 
+            rd_delay_tot_cum / (size-1), rd_delay_cum / (size-1), wr_delay, wr_delay / 100);
+    }
 }
 
 int main(int argc, char **argv)
@@ -370,6 +483,8 @@ int main(int argc, char **argv)
         shared_rwlock_init(&data->lock);
     }
     init_time += GET_TS() - start;
+
+    calibrate_sleep(data);
 
     // Correctness verification
 #if (!defined (MY_PTHREAD_MUTEX) || ( MY_PTHREAD_MUTEX == 0 ))
