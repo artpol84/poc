@@ -1,11 +1,11 @@
 #ifndef MY_LOCK_H
 #define MY_LOCK_H
 
-#if ((MY_FLOCK + MY_PTHREAD + MY_DUMMY) > 1 )
+#if ((MY_FLOCK + MY_PTHREAD + MY_PTHREAD_MUTEX + MY_DUMMY) > 1 )
 #error "Use one and only one locking type at the time"
 #endif
 
-#if ((MY_FLOCK + MY_PTHREAD + MY_DUMMY) == 0 )
+#if ((MY_FLOCK + MY_PTHREAD + MY_PTHREAD_MUTEX + MY_DUMMY) == 0 )
 #error "Use one and only one locking type at the time"
 #endif
     
@@ -15,6 +15,10 @@
 
 #if (MY_PTHREAD == 1)
 #include "pthread.h"
+#endif
+
+#if (MY_PTHREAD_MUTEX == 1)
+#include "pthread_mutex.h"
 #endif
 
 #if (MY_DUMMY == 1)

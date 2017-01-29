@@ -132,6 +132,11 @@ int main(int argc, char **argv)
     MPI_Barrier(MPI_COMM_WORLD);
 
     // Correctness verification
+#if (!defined (MY_PTHREAD_MUTEX) || ( MY_PTHREAD_MUTEX == 0 ))
+    /* Mutexes will not pass this test as only one reader at the
+     * time can get into the region - so the won't be able to
+     * call barrier together
+     */
     if( 0 == rank ){
         printf("Data correctness verification\n");
         for(i=0; i<100; i++){
@@ -164,7 +169,7 @@ int main(int argc, char **argv)
             shared_rwlock_unlock(&data->lock);
         }
     }    
-
+#endif
 
     MPI_Barrier(MPI_COMM_WORLD);
     if( 0 == rank ){
