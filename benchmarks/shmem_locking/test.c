@@ -115,6 +115,10 @@ struct my {
     volatile int counter1, counter2;
 };
 
+struct stats_dbl{
+    double avg, min, max;
+};
+
 struct my *data = NULL;
 
 void *create_seg(char *fname, int size)
@@ -326,7 +330,7 @@ void wronly_test(struct my* data, double *perf)
     *perf = time;
 }
 
-void rdonly_test(struct my* data, double *perf)
+void rdonly_test(struct my* data, struct stats_dbl *perf)
 {
     double time = 0, start, time_cum;
     int i;
@@ -359,10 +363,18 @@ void rdonly_test(struct my* data, double *perf)
         }
     }
     MPI_Reduce(&time, &time_cum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-    *perf = (double)time_cum / (size - 1);
+    perf->avg = (double)time_cum / (size - 1);
+    if( rank == 0){
+        /* root doesn't contribute - 
+         *use avg value so we'll get reasonable min and max 
+         */
+        time = perf->avg;
+    }
+    MPI_Reduce(&time, &perf->min, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&time, &perf->max, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 }
 
-void rdwr_test(struct my *data, double *rlock_avg_cnt, 
+void rdwr_test(struct my *data, struct stats_dbl *rlocks, 
                 double *wr_time_out, double *wr_lock_time_out)
 {
     int cur_count = 0;
@@ -405,7 +417,7 @@ void rdwr_test(struct my *data, double *rlock_avg_cnt,
 
             /* Sleep proportionally to the number of procs */
             double tmp = GET_TS();
-            usleep_my(size);
+            usleep_my(size * 10);
             wr_delay += GET_TS() - tmp;
         }
         *wr_lock_time_out = lock_time;
@@ -422,7 +434,7 @@ void rdwr_test(struct my *data, double *rlock_avg_cnt,
             cur_count = data->counter1;
             
             start = GET_TS();
-            usleep_my(10);
+            usleep_my(5);
             time += GET_TS() - start;
 
             shared_rwlock_unlock(&data->lock);
@@ -431,9 +443,25 @@ void rdwr_test(struct my *data, double *rlock_avg_cnt,
         rd_delay = time / rlock_cnt;
         rd_delay_tot = time;
     }
+
+
+    if( rank == 0 ){
+        rlock_cnt = 0;
+    }
     MPI_Reduce(&rlock_cnt, &rlock_cnt_cum, 1, MPI_UNSIGNED_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
-    *rlock_avg_cnt = (double)rlock_cnt_cum / (size - 1);
-    
+    rlocks->avg = (double)rlock_cnt_cum / (size - 1);
+
+    if( rank == 0){
+        /* root doesn't contribute - 
+         *use avg value so we'll get reasonable min and max 
+         */
+        rlock_cnt = rlocks->avg;
+    }
+    MPI_Reduce(&rlock_cnt, &rlock_cnt_cum, 1, MPI_UNSIGNED_LONG, MPI_MIN, 0, MPI_COMM_WORLD);
+    rlocks->min = rlock_cnt_cum;
+    MPI_Reduce(&rlock_cnt, &rlock_cnt_cum, 1, MPI_UNSIGNED_LONG, MPI_MAX, 0, MPI_COMM_WORLD);
+    rlocks->max = rlock_cnt_cum;
+
     MPI_Reduce(&rd_delay, &rd_delay_cum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&rd_delay_tot, &rd_delay_tot_cum, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     if( rank == 0 ){
@@ -447,8 +475,9 @@ int main(int argc, char **argv)
     char *membase = NULL;
     int i;
     double init_time = 0, start = 0;
-    double wronly_lock_ovh = 0, rdonly_lock_ovh = 0;
-    double rlock_avg_cnt = 0, rdwr_wr_time = 0, rdwr_wr_lock_ovh = 0;
+    double wronly_lock_ovh = 0;
+    double rdwr_wr_time = 0, rdwr_wr_lock_ovh = 0;
+    struct stats_dbl rdonly_lock_ovh, rlock_cnt;
 
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -499,24 +528,26 @@ int main(int argc, char **argv)
     wronly_test(data, &wronly_lock_ovh);
     rdonly_test(data, &rdonly_lock_ovh);
     if( !nordwr ){
-        rdwr_test(data, &rlock_avg_cnt, &rdwr_wr_time, &rdwr_wr_lock_ovh);
+        rdwr_test(data, &rlock_cnt, &rdwr_wr_time, &rdwr_wr_lock_ovh);
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
     
     if( rank == 0){
         if( print_header ){
-            printf("readers\twronly ovh\twronly (lck/s)\trdonly ovh\trdonly (lck/s)");
+            printf("readers\tWO:ovh\tWO:lk/s\tRO:ovh[avg/min/max]\tRO:lk/s");
             if( !nordwr ) {
-                printf("\trdwr (wr ovh)\trdwr (wr time)\trdwr (rlck/s)");
+                printf("\tRW:wovh\tRW:wtm\tRW:rlk/s[avg/min/max]");
             }
             printf("\n");
         }
-        printf("%d\t%lf\t%lf\t%lf\t%lf",
-                size - 1, wronly_lock_ovh, WRONLY_REPS/wronly_lock_ovh,
-                rdonly_lock_ovh,  RDONLY_REPS/rdonly_lock_ovh);
+        printf("%d\t%.0le\t%u\t%.0le/%.0le/%0.le\t%u",
+                size - 1, wronly_lock_ovh, (unsigned)(WRONLY_REPS/wronly_lock_ovh),
+                rdonly_lock_ovh.avg, rdonly_lock_ovh.min, rdonly_lock_ovh.max, (unsigned)(RDONLY_REPS/rdonly_lock_ovh.avg));
         if( !nordwr ){
-           printf("\t%lf\t%lf\t%lf",rdwr_wr_lock_ovh, rdwr_wr_time, rlock_avg_cnt / rdwr_wr_time);
+           printf("\t%.0le\t%.0le\t%u/%u/%u",rdwr_wr_lock_ovh, rdwr_wr_time, 
+                        (unsigned)(rlock_cnt.avg / rdwr_wr_time), (unsigned)(rlock_cnt.min / rdwr_wr_time),
+                        (unsigned)(rlock_cnt.max / rdwr_wr_time));
         }
         printf("\n");
     }
