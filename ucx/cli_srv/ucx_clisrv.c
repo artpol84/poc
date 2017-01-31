@@ -98,6 +98,7 @@ int prepare_ucx()
             basta();
         }
         len = server_addr_len;
+        printf("Addr length = %d\n", server_addr_len);
         MPI_Bcast(&len, 1, MPI_UNSIGNED, 0, MPI_COMM_WORLD);
         MPI_Bcast(server_addr, server_addr_len, MPI_CHAR, 0, MPI_COMM_WORLD);
     } else {
@@ -161,7 +162,8 @@ void server_operation()
             continue;
         }
 process:
-        do { 
+        do {
+            int idx; 
             ucp_worker_progress(ucp_worker);
             msg_tag = ucp_tag_probe_nb(ucp_worker,1, 0xffffffffffffffff, 1, &info_tag);
         
@@ -181,12 +183,26 @@ process:
             ucp_request_release(request);
         
             //printf("Message from %d\n", msg.rank);
-            cur = ranks_account[msg.rank - 1]++;
+            for(idx = 0; idx < 5; idx++){
+                if( msg.str[0] == idx * 5 ){
+                    if( idx > ranks_account[msg.rank - 1] ){
+                        printf("Out of order message from %d: expect %d, get %d\n",
+                            msg.rank, ranks_account[msg.rank - 1], idx);
+                    }
+                    break;
+                }
+            }
+            if( idx == 5 ){
+                printf("%d: Unknown message from %d\n", rank, msg.rank);
+                continue;
+            }
+
             for(i=0; i < 5; i++){
-                if( msg.str[i] != i + cur * 5 ){
+                if( msg.str[i] != i + idx * 5 ){
                     printf("%d: Mismatch from rank %d\n", rank, msg.rank);
                 }
             }
+            ranks_account[msg.rank - 1]++;
         } while( 1 );
         /* check the completion */
         flag = 0;
