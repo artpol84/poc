@@ -356,7 +356,7 @@ void rdonly_test(struct my* data, struct stats_dbl *perf)
             if( 1 == rank ){
                 data->counter1++;
             }
-            usleep_my(10);
+            //usleep_my(10);
             start = GET_TS();
             shared_rwlock_unlock(&data->lock);
             time += GET_TS() - start;
