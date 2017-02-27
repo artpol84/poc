@@ -1,5 +1,5 @@
 
-CC = mpicc
+CC = /home/artpol/WORK/PMIx/TASKS/2017_02_26_dstore_atomics/ompi-build/openmpi-1.6.5/install/bin/mpicc
 CFLAGS = -O3 -g
 LDFLAGS = -lrt
 
@@ -21,6 +21,15 @@ test_pthread_prio: test.c pthread.c pthread.h lock.h Makefile
 	
 test_pthread_mutex: test.c pthread_mutex.c pthread_mutex.h lock.h Makefile
 	$(CC) -o test_pthread_mutex $(CFLAGS) $(LDFLAGS) -DMY_PTHREAD_MUTEX=1 test.c pthread_mutex.c -lpthread
+
+test_c11_atomics: c11_atomics.c c11_atomics.h test.c lock.h Makefile
+	$(CC) -o test_c11_atomics $(CFLAGS) $(LDFLAGS) -DMY_C11_ATOMICS=1 test.c c11_atomics.c -lpthread
+
+test_c11_atomics_spin: c11_atomics_spin.c c11_atomics.h test.c lock.h Makefile
+	$(CC) -o test_c11_atomics_spin $(CFLAGS) $(LDFLAGS) -DMY_C11_ATOMICS=1 test.c c11_atomics_spin.c -lpthread
+
+test_c11_atomics_yield: c11_atomics_yield.c c11_atomics.h test.c lock.h Makefile
+	$(CC) -o test_c11_atomics_yield $(CFLAGS) $(LDFLAGS) -DMY_C11_ATOMICS=1 test.c c11_atomics_yield.c -lpthread
 
 clean:
 	rm -f $(TARGETS) lock_file seg

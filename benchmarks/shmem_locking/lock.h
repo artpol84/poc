@@ -1,14 +1,10 @@
 #ifndef MY_LOCK_H
 #define MY_LOCK_H
 
-#if ((MY_FLOCK + MY_PTHREAD + MY_PTHREAD_MUTEX + MY_DUMMY) > 1 )
+#if ((MY_FLOCK + MY_PTHREAD + MY_PTHREAD_MUTEX + MY_DUMMY + MY_C11_ATOMICS) != 1 )
 #error "Use one and only one locking type at the time"
 #endif
 
-#if ((MY_FLOCK + MY_PTHREAD + MY_PTHREAD_MUTEX + MY_DUMMY) == 0 )
-#error "Use one and only one locking type at the time"
-#endif
-    
 #if (MY_FLOCK == 1)
 #include "flock.h"
 #endif
@@ -23,6 +19,10 @@
 
 #if (MY_DUMMY == 1)
 #include "dummy.h"
+#endif
+
+#if (MY_C11_ATOMICS == 1)
+#include "c11_atomics.h"
 #endif
 
 int shared_rwlock_create(my_lock_t *lock);
