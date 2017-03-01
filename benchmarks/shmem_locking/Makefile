@@ -1,4 +1,4 @@
-CC = mpirun
+CC = mpicc
 CFLAGS = -O3 -g
 LDFLAGS = -lrt
 
@@ -30,7 +30,13 @@ test_buildin_spin: build_in_atomics.c build_in_atomics.h test.c lock.h Makefile
 	$(CC) -o test_buildin_spin $(CFLAGS) $(LDFLAGS) -DMY_GCC_BUILDIN=1 test.c build_in_atomics.c -lpthread
 
 test_buildin_yield: build_in_atomics.c build_in_atomics.h test.c lock.h Makefile
-	$(CC) -o test_buildin_yield $(CFLAGS) $(LDFLAGS) -DMY_GCC_BUILDIN=1 -DMY_GCC_BUILDIN_YIELD=1 test.c build_in_atomics.c -lpthread
+	$(CC) -o test_buildin_yield $(CFLAGS) $(LDFLAGS) -DMY_GCC_BUILDIN=1 -DMY_YIELD=1 test.c build_in_atomics.c -lpthread
+
+test_power8_spin: power8_atomics.c build_in_atomics.h test.c lock.h Makefile
+	$(CC) -o test_power8_spin $(CFLAGS) $(LDFLAGS) -DMY_POWER8_ASM=1 test.c power8_atomics.c -lpthread
+
+test_power8_yield: power8_atomics.c build_in_atomics.h test.c lock.h Makefile
+	$(CC) -o test_power8_yield $(CFLAGS) $(LDFLAGS) -DMY_POWER8_ASM=1 -DMY_YIELD=1 test.c power8_atomics.c -lpthread
 
 # Need C11 support for that, build separately
 test_c11_atomics_spin: c11_atomics_spin.c c11_atomics.h test.c lock.h Makefile
