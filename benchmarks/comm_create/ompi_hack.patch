@@ -1,0 +1,32 @@
+diff --git a/ompi/communicator/comm_cid.c b/ompi/communicator/comm_cid.c
+index 137eb24..9528cc2 100644
+--- a/ompi/communicator/comm_cid.c
++++ b/ompi/communicator/comm_cid.c
+@@ -205,6 +205,9 @@ int ompi_comm_nextcid ( ompi_communicator_t* newcomm,
+ 
+     ompi_comm_cid_allredfct* allredfnct;
+ 
++    static int prev_cid = 0;
++    start = ompi_mpi_communicators.lowest_free > prev_cid ? ompi_mpi_communicators.lowest_free : (prev_cid + 1);
++
+     /**
+      * Determine which implementation of allreduce we have to use
+      * for the current scenario
+@@ -236,7 +239,8 @@ int ompi_comm_nextcid ( ompi_communicator_t* newcomm,
+     if (OMPI_SUCCESS != ret) {
+         return ret;
+     }
+-    start = ompi_mpi_communicators.lowest_free;
++//    start = ompi_mpi_communicators.lowest_free;
++    start = ompi_mpi_communicators.lowest_free > prev_cid ? ompi_mpi_communicators.lowest_free : (prev_cid + 1);
+ 
+     while (!done) {
+         /**
+@@ -318,6 +322,7 @@ int ompi_comm_nextcid ( ompi_communicator_t* newcomm,
+     newcomm->c_contextid = nextcid;
+     opal_pointer_array_set_item (&ompi_mpi_communicators, nextcid, newcomm);
+ 
++    prev_cid = nextcid;
+  release_and_return:
+     ompi_comm_unregister_cid (comm->c_contextid);
+ 
