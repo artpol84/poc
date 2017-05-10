@@ -354,18 +354,21 @@ static int run_ucx_client(ucp_worker_h ucp_worker)
 
     free (msg);
     
-    for(i=1; i <= 4194304; i *= 2){
+//    for(i=1; i <= 4194304; i *= 2){
 //    for(i=262144; i < 2*262144; i *= 2){
+    i = 262144;
+    {
         int rep, j;
-        if( i < 4096 ){
-            rep = 100;
-        } else {
-            rep = 10;
-        }
+        rep = 1000;
+/*
         for(j=0; j < rep/10; j++){
             pong_ping(ucp_worker, server_ep);
         }
+*/
         for(j=0; j < rep; j++){
+            if( j % 10 ){
+                printf("%d: send\n",j);
+            }
             pong_ping(ucp_worker, server_ep);
         }
     }
@@ -456,18 +459,12 @@ static int run_ucx_server(ucp_worker_h ucp_worker)
         goto err;
     }
 
-    for(i=1; i <= 4194304; i *= 2){
+//    for(i=1; i <= 4194304; i *= 2){
 //    for(i=262144; i < 2*262144; i *= 2){
+    i = 262144;
+    {
         int rep, j;
-        if( i < 4096 ){
-            rep = 100;
-        } else {
-            rep = 10;
-        }
-        /* warmup */
-        for(j=0; j < rep/10; j++){
-            ping_pong(ucp_worker, client_ep, i);
-        }
+        rep = 1000;
         double start = GET_TS();
         for(j=0; j < rep; j++){
             ping_pong(ucp_worker, client_ep, i);
