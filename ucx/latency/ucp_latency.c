@@ -146,6 +146,7 @@ static ucs_status_t test_poll_wait(ucp_worker_h ucp_worker)
                 "new epoll: %m\n", epoll_fd);
         goto err_fd;
     }
+
     /* Need to prepare ucp_worker before epoll_wait */
     status = ucp_worker_arm(ucp_worker);
     if (status == UCS_ERR_BUSY) { /* some events are arrived already */
@@ -164,7 +165,6 @@ static ucs_status_t test_poll_wait(ucp_worker_h ucp_worker)
 
 err_fd:
     close(epoll_fd_local);
-
 err:
     return ret;
 }
@@ -180,6 +180,7 @@ int recv_msg(ucp_worker_h ucp_worker, ucp_ep_h server_ep)
 
     /* Receive test string from server */
     do {
+        int i;
         /* Following blocked methods used to polling internal file descriptor
          * to make CPU idle and don't spin loop
          */
@@ -213,6 +214,7 @@ int recv_msg(ucp_worker_h ucp_worker, ucp_ep_h server_ep)
             }
             cur_len = info_tag.length;
         }
+//        usleep(1*(info_tag.length/1000 + 1));
     } else {
         msg = malloc(info_tag.length);
     }
@@ -263,6 +265,9 @@ int send_msg(ucp_worker_h ucp_worker, ucp_ep_h server_ep, int msg_len)
                 msg = malloc(msg_len);
             }
             cur_len = msg_len;
+        }
+        if( msg_len > 262144 ){
+            usleep(1*(msg_len/5000 + 1));
         }
     } else {
         msg = malloc(msg_len);
@@ -350,6 +355,7 @@ static int run_ucx_client(ucp_worker_h ucp_worker)
     free (msg);
     
     for(i=1; i <= 4194304; i *= 2){
+//    for(i=262144; i < 2*262144; i *= 2){
         int rep, j;
         if( i < 4096 ){
             rep = 100;
@@ -451,6 +457,7 @@ static int run_ucx_server(ucp_worker_h ucp_worker)
     }
 
     for(i=1; i <= 4194304; i *= 2){
+//    for(i=262144; i < 2*262144; i *= 2){
         int rep, j;
         if( i < 4096 ){
             rep = 100;
