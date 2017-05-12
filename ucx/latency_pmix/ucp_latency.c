@@ -82,6 +82,7 @@ static ucp_address_t *local_addr;
 static ucp_address_t *peer_addr;
 
 static int same_buf = 1;
+static int mem_set = 0;
 static int signal_pipe[2];
 static int epoll_fd;
 static ucp_ep_h rem_ep;
@@ -286,6 +287,7 @@ struct ucx_context *launch_send(int msg_len)
     static char *msg = NULL;
     static int cur_len = 0;
     int len;
+    static char fill = 'a';
 
     if( same_buf ) {
         if( cur_len < msg_len ) {
@@ -301,6 +303,14 @@ struct ucx_context *launch_send(int msg_len)
         msg = malloc(msg_len);
     }
 
+    if( mem_set ) {
+        memset(msg, fill, msg_len);
+        fill++;
+        if( 'z' < fill ){
+            fill = 'a';
+        }
+    }
+
     request = ucp_tag_send_nb(rem_ep, msg, msg_len,
                               ucp_dt_make_contig(1), tag,
                               send_handle);
@@ -310,13 +320,13 @@ struct ucx_context *launch_send(int msg_len)
         abort();
     } else if (UCS_PTR_STATUS(request) != UCS_OK) {
         request->buf = msg;
-        activate_progress();
     } else {
         request = NULL;
         if( !same_buf ) {
             free(msg);
         }
     }
+    
 
     return request;
 }
@@ -368,6 +378,9 @@ struct ucx_context * launch_recv()
     return request;
 }
 
+static int progress_calls = 0;
+static int progress_count = 0;
+static int msg_num = 0;
 
 int progress(int server, int msg_size)
 {
@@ -385,8 +398,27 @@ int progress(int server, int msg_size)
         }
     }
 
+    progress_calls++;
+
     while (flag) {
         int i;
+        ucs_status_t status;
+
+        status = ucp_worker_arm(ucp_worker);
+
+        if (status == UCS_ERR_BUSY) { /* some events are arrived already */
+            struct ucx_context *tmp;
+            ucp_worker_progress(ucp_worker);
+
+            progress_count++;
+
+            tmp = launch_recv();
+            rreq = (rreq) ? rreq : tmp;
+            ret = 0;
+            goto progress;
+        } else if ( UCS_OK != status ){
+            abort();
+        }
 
         ret = epoll_wait(epoll_fd_local, events, 2, -1);
         if ( 0 > ret ) {
@@ -398,6 +430,9 @@ int progress(int server, int msg_size)
         }
 
         ucp_worker_progress(ucp_worker);
+
+        progress_count++;
+
         for(i=0; i<ret; i++){
             if( events[i].data.fd == epoll_fd){
                 struct ucx_context *tmp;
@@ -413,12 +448,15 @@ int progress(int server, int msg_size)
             }
         }
 
+progress:
         if( sreq ){
             if( sreq->completed ){
                 if( !same_buf ){
                     free(sreq->buf);
                 }
+                sreq->completed = 0;
                 ucp_request_release(sreq);
+                sreq = NULL;
                 sent = 1;
             }
         }
@@ -427,6 +465,10 @@ int progress(int server, int msg_size)
                 if( !same_buf ) {
                     free(rreq->buf);
                 }
+                rreq->completed = 0;
+                ucp_request_release(rreq);
+                rreq = NULL;
+
                 recvd = 1;
                 if( !server ){
                     sreq = launch_send(msg_size);
@@ -476,9 +518,11 @@ static int run_test(int server)
             progress(server, i);
         }
         double time = GET_TS() - start;
-        printf("%d\t%lf\n",i, time / rep / 2 * 1000000);
+        printf("%d\t%lf\t%lf\n",i, time / rep / 2 * 1000000, 
+                (double)progress_count / progress_calls);
+        progress_count = 0;
+        progress_calls = 0;
     }
-
 }
 
 static void barrier(int oob_sock)
@@ -640,13 +684,16 @@ int parse_cmd(int argc, char * const argv[], char **server_name)
 {
     int c = 0, index = 0;
     opterr = 0;
-    while ((c = getopt(argc, argv, "wfbn:p:s:hd")) != -1) {
+    while ((c = getopt(argc, argv, "wfbn:p:s:hdm")) != -1) {
         switch (c) {
         case 'w':
             ucp_test_mode = TEST_MODE_WAIT;
             break;
         case 'd':
             same_buf = 0;
+            break;
+        case 'm':
+            mem_set = 1;
             break;
         case 'f':
             ucp_test_mode = TEST_MODE_EVENTFD;
@@ -695,6 +742,8 @@ int parse_cmd(int argc, char * const argv[], char **server_name)
                     "for server)\n");
             fprintf(stderr, "  -p port Set alternative server port (default:13337)\n");
             fprintf(stderr, "  -s size Set test string length (default:16)\n");
+            fprintf(stderr, "  -d drop caches (use new buffer for each send/recv)\n");
+            fprintf(stderr, "  -m use memset (before each send)\n");
             fprintf(stderr, "\n");
             return UCS_ERR_UNSUPPORTED;
         }
