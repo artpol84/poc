@@ -233,9 +233,35 @@ int recv_msg(ucp_worker_h ucp_worker, ucp_ep_h server_ep)
         free(msg);
         abort();
     } else {
-        wait(ucp_worker, request);
-        request->completed = 0;
-        ucp_request_release(request);
+//!!!!        wait(ucp_worker, request);
+
+    while(1) {
+        /* Following blocked methods used to polling internal file descriptor
+         * to make CPU idle and don't spin loop
+         */
+        /* Progressing before probe to update the state */
+        ucp_worker_progress(ucp_worker);
+
+        /* Check if the message was received */
+        if(request->completed) {
+        	break;
+		}
+
+        if (ucp_test_mode == TEST_MODE_WAIT) {
+            /* Polling incoming events*/
+            status = ucp_worker_wait(ucp_worker);
+            if (status != UCS_OK) {
+                abort();
+            }
+        } else if (ucp_test_mode == TEST_MODE_EVENTFD) {
+            status = test_poll_wait(ucp_worker);
+            if (status != UCS_OK) {
+                abort();
+            }
+        }
+
+    }
+    
     }
 
     if( !same_buf ) {
