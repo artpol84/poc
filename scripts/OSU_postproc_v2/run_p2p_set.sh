@@ -228,7 +228,7 @@ if [ -n "$test_dir" ]; then
     for i in `ls -1 $test_dir`; do
         run_binary $test_dir/$i
     done
-else if [ -n "$test_bin" ]; then
+elif [ -n "$test_bin" ]; then
     run_binary $test_bin
 else
     echo "Nothing to run"
