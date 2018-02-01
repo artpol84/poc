@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Put your SLURM options here
+#SBATCH --partition=debug         # change to proper partition name or remove
+#SBATCH --time=10:00:00           # put proper time of reservation here
+#SBATCH --nodes=4                 # number of nodes
+#SBATCH --ntasks-per-node=2       # processes per node
+
+BASE_PATH=<mpi-path>
+export PATH="$BASE_PATH/bin":$PATH
+export LD_LIBRARY_PATH="$BASE_PATH/lib":$LD_LIBRARY_PATH
+
+mpirun -n 2 ./master
