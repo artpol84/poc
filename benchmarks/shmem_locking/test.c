@@ -71,7 +71,7 @@ unsigned long us1;
 void print_usage(char *pname)
 {
     if( 0 == rank ){
-        printf("Usage %s:\n");
+        printf("Usage %s:\n", pname);
         printf("\t-h        Display this message\n");
         printf("\t-v        Verbose output: show the progress\n");
         printf("\t--no-rdwr Disable read/write test (for some locks it just hangs)\n");
@@ -478,6 +478,8 @@ int main(int argc, char **argv)
     double wronly_lock_ovh = 0;
     double rdwr_wr_time = 0, rdwr_wr_lock_ovh = 0;
     struct stats_dbl rdonly_lock_ovh, rlock_cnt;
+    size_t seg_size;
+    seg_size = (sizeof(struct my) / 4096 + 1 ) * 4096;
 
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -495,7 +497,7 @@ int main(int argc, char **argv)
 
     init_time = GET_TS();
     if( 0 == rank ) {
-        membase = create_seg(segname, 4096);
+        membase = create_seg(segname, seg_size);
         data = (struct my*)membase;
         data->counter1 = 0;
         data->counter2 = 0;
@@ -507,7 +509,7 @@ int main(int argc, char **argv)
 
     start = GET_TS();
     if( 0 != rank ){
-        membase = attach_seg(segname, 4096);
+        membase = attach_seg(segname, seg_size);
         data = (struct my*)membase;
         shared_rwlock_init(&data->lock);
     }
