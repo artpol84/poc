@@ -1,7 +1,7 @@
 #ifndef MY_LOCK_H
 #define MY_LOCK_H
 
-#if ((MY_FLOCK + MY_PTHREAD + MY_PTHREAD_MUTEX + MY_DUMMY + MY_C11_ATOMICS + MY_GCC_BUILDIN + MY_PTHREAD_N) != 1 )
+#if ((MY_FLOCK + MY_PTHREAD + MY_PTHREAD_MUTEX + MY_DUMMY + MY_C11_ATOMICS + MY_GCC_BUILDIN + MY_PTHREAD_N + MY_PTHREAD_N2) != 1 )
 #error "Use one and only one locking type at the time"
 #endif
 
@@ -15,6 +15,10 @@
 
 #if (MY_PTHREAD_N == 1)
 #include "pthread_nlocks.h"
+#endif
+
+#if (MY_PTHREAD_N2 == 1)
+#include "pthread_nlocks2.h"
 #endif
 
 #if (MY_PTHREAD_MUTEX == 1)
