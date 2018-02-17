@@ -42,5 +42,5 @@ char *hostlist_shift(char *hl, char **name)
         hl[0] = '\0';
         hl++;
     }
-    return hl;
+    return skip_spaces(hl);
 }
