@@ -15,4 +15,4 @@ $ ./wc_bench <narrays> <niters>
 
 In addititon to 2 patterns described in [2] I added a strided access to demonstrate how 64B WC buffer affects performance.
 
-## [Result 1](https://github.com/artpol84/poc/blob/master/benchmarks/write_combine/README_r1) Intel(R) Core(TM) i5-4210U CPU @ 1.70GHz
+## [Result 1](https://github.com/artpol84/poc/blob/master/benchmarks/write_combine/README_r1.md) Intel(R) Core(TM) i5-4210U CPU @ 1.70GHz
