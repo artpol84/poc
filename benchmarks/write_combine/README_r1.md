@@ -4,6 +4,8 @@ Processor model: Intel(R) Core(TM) i5-4210U CPU @ 1.70GHz
 * According to results this processor has 9 WC buffers (for 20 distinct buffers split2 stops helping)
 * The fact that results for strides 1-8 performance is comparable means that L2 cache prepatation time is relatively small and if buffering can help for 64-8 iterations it is sufficient.
 
+![Intel Core i5](https://github.com/artpol84/poc/blob/master/benchmarks/write_combine/img/plot_i5.png)
+
 If 9 distinct buffers are used, no visible performance difference observed:
 ```
 $ ./wc_bench 9 1
