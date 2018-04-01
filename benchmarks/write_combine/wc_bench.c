@@ -16,11 +16,16 @@ This file was taken from:
 https://gist.github.com/billywhizz/1086581
 */
 
-#define ARRAY_ITEMS ( 1 << 24 )
 uint64_t narrays = 0, niters = 0;
 char **data = NULL;
-int nitems = ARRAY_ITEMS;
-int mask = ARRAY_ITEMS - 1;
+int nitems = 0;
+int want_cache_flush = 0;
+char *flush_array = NULL;
+size_t flush_array_sz = 0;
+size_t cache_sizes[32];
+int cache_level_cnt = 0;
+int iters_start = 1000;
+int iters[32];
 
 size_t 
 cache_line_size()
@@ -34,6 +39,93 @@ cache_line_size()
 	}
 	return i;
 }
+
+void discover_caches()
+{
+    FILE * p = 0;
+    int idx = 0, level = -1;
+    size_t size;
+
+    for(idx = 0; ; idx++){
+        char path[1024] = "", buf[256];
+        int ret;
+        char symb;
+        sprintf(path, "/sys/devices/system/cpu/cpu0/cache/index%d/level", idx);
+        p = fopen(path, "r");
+        if( !p ) {
+            break;
+//            if( level < 0 ) {
+//                printf("WARNING: Cannot identify cache size, use 10M by default\n");
+//                return (10 * 1024 * 1024);
+//            } else {
+//                printf("Last level cache: level=%d, size=%zd\n", level, size);
+//                return size;
+//            }
+        }
+        fscanf(p, "%d", &level);
+
+        sprintf(path, "/sys/devices/system/cpu/cpu0/cache/index%d/type", idx);
+        p = fopen(path, "r");
+        if( !p ) {
+            printf("ERROR: Unexpected sysfs format\n\n");
+            exit(0);
+        }
+        fscanf(p, "%s", buf);
+        if( !( !strcasecmp(buf,"Data") || !strcasecmp(buf,"Unified")) ) {
+            /* This is not a cache we interested in */
+            continue;
+        }
+
+        sprintf(path, "/sys/devices/system/cpu/cpu0/cache/index%d/size", idx);
+        p = fopen(path, "r");
+        if( !p ) {
+            printf("ERROR: Unexpected sysfs format\n\n");
+            exit(0);
+        }
+        ret = fscanf(p, "%zd%c", &size, &symb);
+        if( ret > 1 ) {
+            switch(symb) {
+            case 'K':
+                size *= 1024;
+                break;
+            case 'M':
+                size *= 1024 * 1024;
+                break;
+            }
+        }
+        cache_sizes[level-1] = size;
+        cache_level_cnt++;
+        if( (level-1) == 0 ){
+            iters[level - 1] = iters_start;
+        } else {
+            iters[level - 1] = iters[level - 2] / 5;
+        }
+    }
+
+    printf("Cache subsystem:\n");
+    for(level=0; level < cache_level_cnt; level++) {
+        printf("Level: %d\tSize: %zd\n", level + 1, cache_sizes[level]);
+    }
+
+    /* Add memory into hirarchy */
+    cache_sizes[cache_level_cnt] = cache_sizes[cache_level_cnt - 1] * 4;
+    iters[cache_level_cnt] = iters[cache_level_cnt - 1] / 5;
+    cache_level_cnt++;
+
+    return;
+}
+
+void flush_cache()
+{
+    int i;
+    static int count = 0;
+
+    count++;
+    for(i=0; i< flush_array_sz; i++){
+        flush_array[i] = count;
+    }
+}
+
 
 inline uint64_t
 rdtsc()
@@ -50,49 +142,64 @@ void runloop(int afirst, int alast, int ifirst, int ilast, int iinc)
 
     for(it = ifirst; it < ilast; it+=iinc){
         for(a = afirst; a < alast; a++) {
-            int idx = it & mask;
-            data[a][idx] = it;
-//            printf("data[%d][%d]\n", a, idx);
+            data[a][it] = it;
         }
     }
 }
 
-void testloop1()
+uint64_t testloop1()
 {
-    int i;
-    uint64_t start, end;
+    int i, warmup = niters;
+    uint64_t start, end, result = 0;
 
-    start = rdtsc();
-    for(i = 0; i < niters; i++) {
+    for(i = 0; i < niters + warmup; i++) {
+        if(want_cache_flush) {
+            flush_cache();
+        }
+        start = rdtsc();
         /* Perform access multiple times */
         runloop(0, narrays, 0, nitems, 1);
+        end = rdtsc();
+        if( i >= warmup ) {
+            result += end - start;
+        }
     }
-	end = rdtsc();
-    printf("seq:\t%lu\n", end - start);
+    return result;
 }
 
-void testloop2()
+uint64_t testloop2()
 {
-    int i;
-    uint64_t start, end;
+    int i, warmup = niters;
+    uint64_t start, end, result = 0;
 
-    start = rdtsc();
-    for(i = 0; i < niters; i++) {
+
+    for(i = 0; i < niters + warmup; i++) {
+        if(want_cache_flush) {
+            flush_cache();
+        }
+        start = rdtsc();
         /* Perform access multiple times */
         runloop(0, narrays / 2, 0, nitems, 1);
         runloop(narrays / 2, narrays, 0, nitems, 1);
+        end = rdtsc();
+        if( i >= warmup ) {
+            result += end - start;
+        }
     }
-    end = rdtsc();
-    printf("split2:\t%lu\n", end - start);
+    return result;
 }
 
-void testloop3(int stride)
+uint64_t testloop3(int stride)
 {
-    int i, j;
-    uint64_t start, end;
+    int i, j, warmup = niters;
+    uint64_t start, end, result = 0;
 
-    start = rdtsc();
-    for(i = 0; i < niters; i++) {
+
+    for(i = 0; i < niters + warmup; i++) {
+        if(want_cache_flush) {
+            flush_cache();
+        }
+        start = rdtsc();
         /* First access first half of arrays */
         for(j=0; j < stride; j++){
             runloop(0, narrays / 2, j, nitems, stride);
@@ -101,35 +208,71 @@ void testloop3(int stride)
         for(j=0; j < stride; j++){
             runloop(narrays / 2, narrays, j, nitems, stride);
         }
+        end = rdtsc();
+        if( i >= warmup ) {
+            result += end - start;
+        }
     }
-    end = rdtsc();
-    printf("split2:\tstride=%d %lu\n", stride, end - start);
+    return result;
 }
 
 int
 main(int argc, char **argv)
 {
 	int i;
-	int cline = cache_line_size();
-	printf("cache line size: %d\n", cline);
-	if( argc < 3 ) {
-		printf("Usage: <prog> <narrays> <niters>");
+    int cache_line = cache_line_size();
+    int level;
+    discover_caches();
+    printf("cache line size: %d\n", cache_line);
+    if( argc < 2 ) {
+        printf("Usage: <prog> <narrays>");
 		return 0;
 	}
 
 	narrays = atoi(argv[1]);
-	niters = atoi(argv[2]);
+    data = calloc(narrays, sizeof(*data));
 
-	data = calloc(narrays, sizeof(*data));
-	for(i = 0; i < narrays; i++ ){
-        data[i] = calloc(nitems, sizeof(*data[0]));
-	}
+    for(level = 0; level < cache_level_cnt; level++) {
+        uint64_t result;
+        niters = iters[level];
 
-	testloop1();
-	testloop2();
-    for(i=1; i<=cline; i*=2) {
-        testloop3(i);
+        printf("Fit data to the level %d of memory hirarchy (%zdB)\n",
+               level + 1, cache_sizes[level]);
+
+        nitems = cache_sizes[level] / narrays;
+        for(i = 0; i < narrays; i++ ){
+            data[i] = calloc(nitems + cache_sizes[level], sizeof(*data[0]));
+        }
+        flush_array_sz = cache_sizes[level] * 2;
+        flush_array = calloc(flush_array_sz, sizeof(char));
+
+
+//      printf("\t#1 WOUT cache flush:\n");
+        want_cache_flush = 0;
+        result = testloop1();
+        printf("\tseq:\tstride=1\t%lu cycles/B\n", result / niters / nitems / narrays);
+        result = testloop2();
+        printf("\tsplit2:\tstride=1\t%lu cycles/B\n", result / niters / nitems / narrays);
+        for(i=2; i<=cache_line; i*=2) {
+            result = testloop3(i);
+            printf("\tsplit2:\tstride=%d\t%lu cycles/B\n", i, result / niters / nitems / narrays);
+        }
+
+//        printf("\t#2 WITH cache flush:\n");
+//        want_cache_flush = 1;
+//        result = testloop1();
+//        printf("\t\tseq:\tstride=1\t%lu cycles/B\n", result / niters / nitems / narrays);
+//        result = testloop2();
+//        printf("\t\tsplit2:\tstride=1\t%lu cycles/B\n", result / niters / nitems / narrays);
+//        for(i=2; i<=cache_line; i*=2) {
+//            result = testloop3(i);
+//            printf("\t\tsplit2:\tstride=%d\t%lu cycles/B\n", i, result / niters / nitems / narrays);
+//        }
+
+        for(i = 0; i < narrays; i++ ){
+            free(data[i]);
+        }
+        free(flush_array);
     }
-
 	return 0;
 }
