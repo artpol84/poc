@@ -26,6 +26,7 @@ size_t cache_sizes[32];
 int cache_level_cnt = 0;
 int iters_start = 1000;
 int iters[32];
+int want_sfence = 0;
 
 size_t 
 cache_line_size()
@@ -136,7 +137,7 @@ rdtsc()
 }
 
 /* A core loop that allows to try all kinds of optimizations */
-void runloop(int afirst, int alast, int ifirst, int ilast, int iinc)
+void runloop_regular(int afirst, int alast, int ifirst, int ilast, int iinc)
 {
     int it, a;
 
@@ -146,6 +147,29 @@ void runloop(int afirst, int alast, int ifirst, int ilast, int iinc)
         }
     }
 }
+
+/* A core loop that allows to try all kinds of optimizations */
+void runloop_sfence(int afirst, int alast, int ifirst, int ilast, int iinc)
+{
+    int it, a;
+
+    for(it = ifirst; it < ilast; it+=iinc){
+        for(a = afirst; a < alast; a++) {
+            data[a][it] = it;
+        }
+		asm volatile ("sfence" ::: "memory");
+    }
+}
+
+void runloop(int afirst, int alast, int ifirst, int ilast, int iinc)
+{
+	if( want_sfence ){
+		runloop_sfence(afirst, alast, ifirst, ilast, iinc);
+	} else {
+		runloop_regular(afirst, alast, ifirst, ilast, iinc);
+	}
+}
+
 
 uint64_t testloop1()
 {
@@ -225,8 +249,12 @@ main(int argc, char **argv)
     discover_caches();
     printf("cache line size: %d\n", cache_line);
     if( argc < 2 ) {
-        printf("Usage: <prog> <narrays>");
+        printf("Usage: <prog> <narrays> [sfence]");
 		return 0;
+	}
+
+	if( argc > 2 && !strcmp(argv[2], "sfence") ){
+		want_sfence = 1;
 	}
 
 	narrays = atoi(argv[1]);
