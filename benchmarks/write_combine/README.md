@@ -8,10 +8,10 @@ Links used to implement:
 
 Usage:
 ```shell
-$ ./wc_bench <narrays> <niters>
+$ ./wc_bench <narrays> [sfence]
 ```
 * narrays - number of distinct arrays to be used (as different CPUs will likely to have different number of WC buffers)
-* niters  - how many times to repeat the full access (in my tests 1 iter is enough)
+* sfence  - instructs to perform store fence after one byte to each array is written (doesn't change the results)
 
 In addititon to 2 patterns described in [2] I added a strided access to demonstrate how 64B WC buffer affects performance.
 
