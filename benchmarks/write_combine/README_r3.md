@@ -1,7 +1,7 @@
 
 Processor model: Intel(R) Xeon(R) CPU E5-2680 0 @ 2.70GHz
 
-* According to results this processor has 8 WC buffers (for 18 distinct buffers split2 stops helping)
+* According to results this processor has 9 WC buffers (for 20 distinct buffers split2 stops helping)
 
 ```
 $ ./wc_bench 18
