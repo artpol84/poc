@@ -1,7 +1,9 @@
 #include <stdio.h>
+#define _GNU_SOURCE             /* See feature_test_macros(7) */
 #include <pthread.h>
 #include <stdatomic.h>
 #include <stdlib.h>
+
 
 #define GET_TS() ({                         \
     struct timespec ts;                     \
@@ -19,10 +21,18 @@ int cnt;
 int nthr, niter;
 int indexes[200];
 double timings[200][2];
- 
+
 void *f(void* thr_data)
 {
     int my_idx = *(int*)thr_data;
+
+    cpu_set_t set;
+    CPU_ZERO(&set);
+    CPU_SET(my_idx, &set);
+    if( pthread_setaffinity_np(pthread_self(), sizeof(set), &set) ){
+        abort();
+    }
+
     while( !start );
 
     timings[my_idx][0] = GET_TS();
