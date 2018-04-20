@@ -1,6 +1,10 @@
 #include <stdio.h>
+#define _GNU_SOURCE
+#define __USE_GNU
 #include <pthread.h>
+#include <sched.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "ppc.h"
 
@@ -25,12 +29,20 @@ void *f(void* thr_data)
 {
     int my_idx = *(int*)thr_data;
     int n;
+
+    cpu_set_t set;
+    CPU_ZERO(&set);
+    CPU_SET(my_idx, &set);
+    if( pthread_setaffinity_np(pthread_self(), sizeof(set), &set) ){
+        abort();
+    }
+
     while( !start );
 
     timings[my_idx][0] = GET_TS();
     for(n = 0; n < niter; ++n) {
         atomic_inc(&acnt, 1);
-        ++cnt; // undefined behavior, in practice some updates missed
+//        ++cnt; // undefined behavior, in practice some updates missed
     }
     timings[my_idx][1] = GET_TS();
     return 0;
@@ -39,6 +51,9 @@ void *f(void* thr_data)
 int main(int argc, char **argv)
 {
     int n;
+    struct timespec ts;
+    ts.tv_sec = 0;
+    ts.tv_nsec = 100000;
 
     if( argc < 3 ){
         printf("Want <nthr> and <niter>\n");
@@ -53,6 +68,9 @@ int main(int argc, char **argv)
         indexes[n] = n;
         pthread_create(&thr[n], NULL, f, &indexes[n]);
     }
+
+    nanosleep(&ts, NULL);
+
     start = 1;
     for( n = 0; n < nthr; ++n)
         pthread_join(thr[n], NULL);
