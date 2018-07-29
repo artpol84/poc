@@ -12,17 +12,132 @@
     clock_gettime(CLOCK_MONOTONIC, &ts);    \
     ret = ts.tv_sec + 1E-9*ts.tv_nsec;      \
     ret;                                    \
-})
+    })
 
-#define ITERATIONS 1000000
+int indexes[1024];
+double results[1024];
+int niter, nthr, start = 0;
 
-int main()
+void do_bind(int idx)
 {
-	int i;
-	double time = GET_TS();
-	for(i=0; i<ITERATIONS; i++) {
-		func();
-	}
-	time = GET_TS() - time;
-	printf("lat = %lf\n", 1000000 * time / ITERATIONS);
+    cpu_set_t set;
+
+    CPU_ZERO(&set);
+    CPU_SET(idx, &set);
+    if( pthread_setaffinity_np(pthread_self(), sizeof(set), &set) ){
+        abort();
+    }
+}
+
+void *eval_tloc(void *data)
+{
+    int myidx = *(int*)data;
+    int i;
+
+    do_bind(myidx);
+
+    double time = GET_TS();
+    for(i=0; i<niter; i++) {
+        func_tloc();
+    }
+    results[myidx] = GET_TS() - time;
+}
+
+void *eval_glob(void *data)
+{
+    int myidx = *(int*)data;
+    int i;
+
+    do_bind(myidx);
+
+    double time = GET_TS();
+    for(i=0; i<niter; i++) {
+        func_glob();
+    }
+    results[myidx] = GET_TS() - time;
+}
+
+
+void *eval_floc(void *data)
+{
+    int myidx = *(int*)data;
+    int i;
+
+    do_bind(myidx);
+
+    double time = GET_TS();
+    for(i=0; i<niter; i++) {
+        func_floc();
+    }
+    results[myidx] = GET_TS() - time;
+}
+
+void *eval_fstatic(void *data)
+{
+    int myidx = *(int*)data;
+    int i;
+
+    do_bind(myidx);
+
+    double time = GET_TS();
+    for(i=0; i<niter; i++) {
+        func_fstatic();
+    }
+    results[myidx] = GET_TS() - time;
+}
+
+
+execute(char *prefix, void *(*func)(void*))
+{
+    int i;
+    struct timespec ts;
+    double sum = 0;
+
+    if( nthr == 1 ){
+        int idx = 0;
+        eval_glob(&idx);
+    } else {
+        pthread_t thr[nthr];
+
+        for( i = 0; i < nthr; ++i){
+            indexes[i] = i;
+            pthread_create(&thr[i], NULL, func, &indexes[i]);
+        }
+        nanosleep(&ts, NULL);
+
+        start = 1;
+        for( i = 0; i < nthr; ++i)
+            pthread_join(thr[i], NULL);
+    }
+
+    sum = 0;
+    for(i = 0; i < nthr; i++) {
+        sum += results[i];
+    }
+
+    printf("%s: avg lat = %lf us\n", prefix, 1E6 * sum / niter / nthr);
+
+}
+
+int main(int argc, char **argv)
+{
+    if( argc < 3 ){
+        printf("Want <nthr> and <niter>\n");
+        return 0;
+    }
+    nthr = atoi(argv[1]);
+    niter = atoi(argv[2]);
+
+    if( nthr < 0 ){
+        printf("Bad number of threads: %d\n", nthr);
+        return 0;
+    }
+
+    execute("stack:", eval_floc);
+    execute("fstatic:", eval_fstatic);
+    execute("global:", eval_glob);
+    execute("tlocal:", eval_tloc);
+
+
+    return 0;
 }
