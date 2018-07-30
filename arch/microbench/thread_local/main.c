@@ -95,7 +95,7 @@ execute(char *prefix, void *(*func)(void*))
 
     if( nthr == 1 ){
         int idx = 0;
-        eval_glob(&idx);
+        func(&idx);
     } else {
         pthread_t thr[nthr];
 
@@ -121,7 +121,7 @@ execute(char *prefix, void *(*func)(void*))
 
 int main(int argc, char **argv)
 {
-    if( argc < 3 ){
+    if( argc < 3 ) {
         printf("Want <nthr> and <niter>\n");
         return 0;
     }
