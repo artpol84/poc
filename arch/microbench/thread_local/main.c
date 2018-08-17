@@ -15,7 +15,7 @@
     })
 
 int indexes[1024];
-double results[1024];
+double results[1024] = { 0 };
 int niter, nthr, start = 0;
 
 void do_bind(int idx)
@@ -86,11 +86,24 @@ void *eval_fstatic(void *data)
     results[myidx] = GET_TS() - time;
 }
 
+void *eval_pth_key(void *data)
+{
+    int myidx = *(int*)data;
+    int i;
+
+    do_bind(myidx);
+
+    double time = GET_TS();
+    for(i=0; i<niter; i++) {
+        func_pth_key();
+    }
+    results[myidx] = GET_TS() - time;
+}
 
 execute(char *prefix, void *(*func)(void*))
 {
     int i;
-    struct timespec ts;
+    struct timespec ts = { 0, 10000000 };
     double sum = 0;
 
     if( nthr == 1 ){
@@ -133,11 +146,13 @@ int main(int argc, char **argv)
         return 0;
     }
 
+    lib_init();
+
     execute("stack:", eval_floc);
     execute("fstatic:", eval_fstatic);
     execute("global:", eval_glob);
     execute("tlocal:", eval_tloc);
-
+    execute("pth_key:", eval_pth_key);
 
     return 0;
 }
