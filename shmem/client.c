@@ -7,24 +7,24 @@ int main()
 {
     int step = 0;
     sync_shmem_cli_init();
-
+/*
     if( rank == 1 ){
         int delay = 0;
         while( delay) {
             sleep(1);
         }
     }
-
-    sync_shmem_do();
+*/
+    sync_shmem_barrier();
     printf("step #%d\n", ++step);
 
-    sync_shmem_do();
+    sync_shmem_barrier();
     printf("step #%d\n", ++step);
 
-    sync_shmem_do();
+    sync_shmem_barrier();
     printf("step #%d\n", ++step);
 
-    sync_shmem_do();
+    sync_shmem_barrier();
     printf("step #%d\n", ++step);
 
 }
