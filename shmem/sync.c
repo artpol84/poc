@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
@@ -8,14 +9,17 @@
 #include <errno.h>
 
 static char *fname = NULL;
-static int nranks = 0;
+static int _nranks = 0;
 static int shemm_sync_fd = -1;
-int size, rank;
+static int _sync_size, _rank;
+static int _ag_size, _seg_fsize;
 
 struct record{
     int seq_num;
     char reserve[64 - sizeof(int)];
 } *shmem_ptr = NULL;
+
+double *ag_ptr = NULL;
 
 static void _shmem_init()
 {
@@ -30,11 +34,13 @@ static void _shmem_init()
     if( !ptr ){
         abort();
     }
-    nranks = atoi(ptr);
-    if( nranks > 128 || nranks <= 0 ) {
+    _nranks = atoi(ptr);
+    if( _nranks > 128 || _nranks <= 0 ) {
         abort();
     }
-    size = 64 * (nranks + 1);
+    _sync_size = 64 * (_nranks + 1);
+    _ag_size = sizeof(double) * _nranks;
+    _seg_fsize = _sync_size + _ag_size;
 }
 
 void sync_shmem_srv_init()
@@ -48,19 +54,19 @@ void sync_shmem_srv_init()
         abort();
     }
 
-    size = (nranks + 1) * 64;
+    _sync_size = (_nranks + 1) * 64;
     /* size backing file - note the use of real_size here */
-    if (0 != ftruncate(shemm_sync_fd, size)) {
+    if (0 != ftruncate(shemm_sync_fd, _seg_fsize)) {
         abort();
     }
 
-    if (MAP_FAILED == (seg_addr = mmap(NULL, size,
+    if (MAP_FAILED == (seg_addr = mmap(NULL, _seg_fsize,
                                        PROT_READ | PROT_WRITE, MAP_SHARED,
                                        shemm_sync_fd, 0))) {
         abort();
     }
 
-    memset(seg_addr, 0, size);
+    memset(seg_addr, 0, _seg_fsize);
     shmem_ptr = (struct record*)seg_addr;
 }
 
@@ -76,7 +82,7 @@ void sync_shmem_cli_init()
     if (-1 == (shemm_sync_fd = open(fname, mode))) {
         abort();
     }
-    if (MAP_FAILED == (seg_addr = mmap(NULL,size, mmap_prot,
+    if (MAP_FAILED == (seg_addr = mmap(NULL,_seg_fsize, mmap_prot,
                                        MAP_SHARED, shemm_sync_fd, 0))) {
         abort();
     }
@@ -85,24 +91,37 @@ void sync_shmem_cli_init()
     }
 
     shmem_ptr = (struct record*)seg_addr;
+    ag_ptr = (double*)( (char*)seg_addr + _sync_size);
 
     char *ptr = getenv("PMIX_RANK");
     if( !ptr ){
         abort();
     }
-    rank = atoi(ptr);
+    _rank = atoi(ptr);
 }
 
-void sync_shmem_do()
+void sync_shmem_barrier()
 {
-    int new_val = ++shmem_ptr[rank + 1].seq_num;
+    int new_val = ++shmem_ptr[_rank + 1].seq_num;
     int i;
-    if( rank == 0 ){
-        for(i=0; i< nranks; i++) {
+    if( _rank == 0 ){
+        for(i=0; i< _nranks; i++) {
             while(shmem_ptr[i + 1].seq_num != new_val );
         }
         shmem_ptr[0].seq_num = new_val;
     } else {
         while(shmem_ptr[0].seq_num != new_val );
     }
+}
+
+int sync_shmem_nranks()
+{
+    return _nranks;
+}
+
+void sync_shmem_allgather(double in, double **out)
+{
+    ag_ptr[_rank] = in;
+    sync_shmem_barrier();
+    *out = ag_ptr;
 }
