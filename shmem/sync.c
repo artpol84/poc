@@ -21,6 +21,16 @@ struct record{
 
 double *ag_ptr = NULL;
 
+int sync_shmem_nranks()
+{
+    return _nranks;
+}
+
+int sync_shmem_rank()
+{
+    return _rank;
+}
+
 static void _shmem_init()
 {
     char *ptr;
@@ -112,11 +122,6 @@ void sync_shmem_barrier()
     } else {
         while(shmem_ptr[0].seq_num != new_val );
     }
-}
-
-int sync_shmem_nranks()
-{
-    return _nranks;
 }
 
 void sync_shmem_allgather(double in, double **out)
