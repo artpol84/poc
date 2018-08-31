@@ -15,7 +15,7 @@ static int _sync_size, _rank;
 static int _ag_size, _seg_fsize;
 
 struct record{
-    int seq_num;
+    volatile int seq_num;
     char reserve[64 - sizeof(int)];
 } *shmem_ptr = NULL;
 
