@@ -4,3 +4,6 @@
 * S.V. Adve, K. Gharachorloo [Shared Memory Consistency Models: A Tutorial (HP)](http://www.hpl.hp.com/techreports/Compaq-DEC/WRL-95-7.pdf)
   * http://rsim.cs.uiuc.edu/~sadve/JavaWorkshop00/talk.pdf
 * Ulrich Drepper [What Every Programmer Should Know About Memory](https://people.freebsd.org/~lstewart/articles/cpumemory.pdf)
+* Write Combine
+  * http://download.intel.com/design/PentiumII/applnots/24442201.pdf
+  
