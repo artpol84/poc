@@ -264,17 +264,17 @@ void print_PMC()
     printf("PMU info\n");
     printf("\tBased on: Intel 64 & IA32 Architectures Software Development manual vol 3\n");
     printf("\t\tChapter 18. Performance monitoring\n");
-    printf("EAX data:\n");
+    printf("\tEAX data:\n");
     ver = (int)(regs[0] & 0xff);
-    printf("\tRaw value: 0x%x\n", (uint32_t)regs[0]);
-    printf("\tPM arch v: %d\n", ver);
-    printf("\tPMC #    : %d\n", (uint32_t)(regs[0]>>8) & 0xff);
-    printf("\tPMC width: %d\n", (uint32_t)(regs[0]>>16) & 0xff);
+    printf("\t\tRaw value: 0x%x\n", (uint32_t)regs[0]);
+    printf("\t\tPM arch v: %d\n", ver);
+    printf("\t\tPMC #    : %d\n", (uint32_t)(regs[0]>>8) & 0xff);
+    printf("\t\tPMC width: %d\n", (uint32_t)(regs[0]>>16) & 0xff);
     if( ver > 1 ){
-        printf("EDX data:\n");
-        printf("\tRaw value           : 0x%x\n", (uint32_t)regs[3]);
-        printf("\tfixd-func (ff) PMC #: %d\n", (uint32_t)(regs[0] & 0x1f));
-        printf("\tff PMC width        : %d\n", (uint32_t)((regs[0] >> 5) & 0xff));
+        printf("\tEDX data:\n");
+        printf("\t\tRaw value           : 0x%x\n", (uint32_t)regs[3]);
+        printf("\t\tfixd-func (ff) PMC #: %d\n", (uint32_t)(regs[3] & 0x1f));
+        printf("\t\tff PMC width        : %d\n", (uint32_t)((regs[3] >> 5) & 0xff));
     }
 
 }
