@@ -22,6 +22,8 @@
 //////////////////////////////////////////////////////////////////////////////
 
 #include <stdio.h>
+#include <string.h>
+#include <stdint.h>
 
 // codes for processor vendor
 enum EProcVendor {VENDOR_UNKNOWN = 0, INTEL, AMD, VIA};
@@ -166,10 +168,11 @@ void GetProcessorFamily() {
 
 
 
-int main(int argc, char* argv[]) 
+void print_muAch() 
 {
     GetProcessorVendor();
     GetProcessorFamily();
+    printf("uArch: ");
     switch(MFamily) {
     case INTEL_P1MMX:
         printf("Intel Pentium 1 or Pentium MMX\n");
@@ -237,7 +240,49 @@ int main(int argc, char* argv[])
 */
 
     }
-    return 0;
 }
 
+void print_vendor()
+{
+    char str[13] = { 0 };
+    int regs[4];
+    Cpuid(regs, 0);
+    memcpy(str, (char*)(regs + 1), 4);
+    memcpy(str + 4, (char*)(regs + 3), 4);
+    memcpy(str + 8, (char*)(regs + 2), 4);
+    printf("Vendor ID: %s\n", str);
+    printf("max leaf = %ld\n", regs[0]);
+}
 
+void print_PMC()
+{
+    int regs[4];
+    int ver;
+    
+    /* Get PMU */
+    Cpuid(regs, 0xa);
+    printf("PMU info\n");
+    printf("\tBased on: Intel 64 & IA32 Architectures Software Development manual vol 3\n");
+    printf("\t\tChapter 18. Performance monitoring\n");
+    printf("EAX data:\n");
+    ver = (int)(regs[0] & 0xff);
+    printf("\tRaw value: 0x%x\n", (uint32_t)regs[0]);
+    printf("\tPM arch v: %d\n", ver);
+    printf("\tPMC #    : %d\n", (uint32_t)(regs[0]>>8) & 0xff);
+    printf("\tPMC width: %d\n", (uint32_t)(regs[0]>>16) & 0xff);
+    if( ver > 1 ){
+        printf("EDX data:\n");
+        printf("\tRaw value           : 0x%x\n", (uint32_t)regs[3]);
+        printf("\tfixd-func (ff) PMC #: %d\n", (uint32_t)(regs[0] & 0x1f));
+        printf("\tff PMC width        : %d\n", (uint32_t)((regs[0] >> 5) & 0xff));
+    }
+
+}
+
+int main(int argc, char* argv[]) 
+{
+    print_vendor();
+    print_muAch();
+    print_PMC();
+    return 0;
+}
