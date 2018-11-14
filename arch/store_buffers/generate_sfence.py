@@ -13,7 +13,7 @@ def write_asm_body(out) :
 	out.write("        uint64_t array[" + str(array_size) + "];\n");
 	out.write("        asm volatile (\n");
 	i = 0
-	while (i < 1):
+	while (i < 16):
 		line = "            "
 		line += "\"movq $" + str(i) + ", "
 		line += str(i * 8) + "(%[array])\\n\"\n"
