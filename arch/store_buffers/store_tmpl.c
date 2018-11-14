@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
+#include <immintrin.h>
 
 uint64_t rdtsc() {
     uint64_t ts;
