@@ -7,7 +7,10 @@ out_fname = sys.argv[2]
 nstores = int(sys.argv[3])
 
 def write_asm_body(out) :
-	out.write("        uint64_t array[" + str(nstores) + "];\n");
+	array_size = nstores
+	if nstores < 16:
+		array_size = 16
+	out.write("        uint64_t array[" + str(array_size) + "];\n");
 	out.write("        asm volatile (\n");
 	i = 0
 	while (i < 1):
