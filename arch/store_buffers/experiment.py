@@ -3,12 +3,12 @@
 import sys
 import os
 
-tmpl_fname = sys.argv[1]
+gen_script = sys.argv[1]
 max_stores = int(sys.argv[2])
 
 i = 1
 while (i <= max_stores):
-    os.system('python generate.py store_tmpl.c test.c ' + str(i))
+    os.system('python ' + gen_script + ' store_tmpl.c test.c ' + str(i))
     os.system('gcc -O3 -o test test.c')
     os.system('./test')
     os.system('rm test*')
