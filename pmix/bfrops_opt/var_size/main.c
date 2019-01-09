@@ -4,15 +4,19 @@
 
 #define UNLIKELY(x) (__builtin_expect(!!(x), 0))
 
+#define BASE7_MASK ((1<<7) - 1)
+#define BASE7_SHIFT 7
+#define BASE7_CONT_FLAG (1<<7)
+
 int pack_size(uint64_t size, uint8_t out_buf[9])
 {
     uint64_t tmp = size;
     int idx = 0;
     while(tmp && idx < 8) {
-        uint8_t val = tmp % 128;
-        tmp /= 128;
+        uint8_t val = tmp & BASE7_MASK;
+        tmp >>= BASE7_SHIFT;
         if( UNLIKELY(tmp) ) {
-            val += 128;
+            val |= BASE7_CONT_FLAG;
         }
         out_buf[idx++] = val;
     }
@@ -26,19 +30,19 @@ int pack_size(uint64_t size, uint8_t out_buf[9])
 
 uint64_t unpack_size(uint8_t in_buf[])
 {
-    uint64_t size = 0, multiplyer = 1;
+    uint64_t size = 0, shift = 0;
     int idx = 0;
     uint8_t val = 0;
     do {
         val = in_buf[idx++];
-        size = size + multiplyer * (val % 128);
-        multiplyer *= 128;
-    } while( UNLIKELY((val / 128) && (idx < 8)) );
+        size = size + (((uint64_t)val & BASE7_MASK) << shift);
+        shift += BASE7_SHIFT;
+    } while( UNLIKELY((val & BASE7_CONT_FLAG) && (idx < 8)) );
 
     /* If we have leftover (VERY unlikely) */
-    if (UNLIKELY(8 == idx && (val / 128))) {
+    if (UNLIKELY(8 == idx && (val & BASE7_CONT_FLAG))) {
         val = in_buf[idx++];
-        size = size + multiplyer * val;
+        size = size + ((uint64_t)val << shift);
     }
     return size;
 }
@@ -48,16 +52,29 @@ int main()
 {
     uint64_t size;
 
-    for(size = (uint64_t)(-1) - 10000000000; size < (uint64_t)(-1); size++) {
+    for(size = 0; size < 100000000000; size++) {
         uint8_t buf[9];
         int s = pack_size(size, buf);
         uint64_t nsize = unpack_size(buf);
         if( nsize != size){
             abort();
         }
-	if( 0 == (size%100000) ){
-	    printf("size = %lu\n", size);
-	}
+        if( 0 == (size%100000) ){
+            printf("1: size = %lu\n", size);
+        }
+    }
+
+    for(size = (uint64_t)(-1) - 100000000000; size < (uint64_t)(-1); size++) {
+        uint8_t buf[9];
+        int s = pack_size(size, buf);
+        uint64_t nsize = unpack_size(buf);
+        if( nsize != size){
+            abort();
+        }
+
+        if( 0 == (size%100000) ){
+            printf("1: size = %lu\n", size);
+        }
     }
     printf("OK\n");
     return 0;
