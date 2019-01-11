@@ -50,7 +50,19 @@ uint64_t unpack_size(uint8_t in_buf[])
 
 int main()
 {
+    int i;
     uint64_t size;
+    size_t buffer_sizes[] = { 16, 256, 4096, 16*1024, 1024*1024, 128*1024*1024, 1024*1024*1024 };
+    int cnt = sizeof(buffer_sizes) / sizeof(buffer_sizes[0]);
+
+
+    printf("Flexible storage allocation for different numbers:\n");
+    for(i = 0; i < cnt; i++) {
+        uint8_t buf[9];
+        size = buffer_sizes[i];
+        int s = pack_size(size, buf);
+        printf("%zu: %d\n", size, s);
+    }
 
     for(size = 0; size < 100000000000; size++) {
         uint8_t buf[9];
@@ -76,6 +88,7 @@ int main()
             printf("1: size = %lu\n", size);
         }
     }
+
     printf("OK\n");
     return 0;
 }
