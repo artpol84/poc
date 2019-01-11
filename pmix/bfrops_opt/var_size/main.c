@@ -12,14 +12,14 @@ int pack_size(uint64_t size, uint8_t out_buf[9])
 {
     uint64_t tmp = size;
     int idx = 0;
-    while(tmp && idx < 8) {
+    do {
         uint8_t val = tmp & BASE7_MASK;
         tmp >>= BASE7_SHIFT;
         if( UNLIKELY(tmp) ) {
             val |= BASE7_CONT_FLAG;
         }
         out_buf[idx++] = val;
-    }
+    } while(tmp && idx < 8);
 
     /* If we have leftover (VERY unlikely) */
     if (UNLIKELY(8 == idx && tmp)) {
