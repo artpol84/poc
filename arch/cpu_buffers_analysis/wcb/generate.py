@@ -5,6 +5,7 @@ import sys
 tmpl_fname = sys.argv[1]
 out_fname = sys.argv[2]
 nstores = int(sys.argv[3])
+nnoops = int(sys.argv[4])
 
 def write_asm_body(out) :
 	array_size = nstores
@@ -22,7 +23,7 @@ def write_asm_body(out) :
 		i += 1
 
 	i = 0
-	while (i < 500) :
+	while (i < nnoops) :
 		line = "            "
 		line += "\"nop\\n\"\n"
 		out.write(line)
