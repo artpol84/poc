@@ -17,7 +17,7 @@ uint64_t rdtsc() {
 int main(int argc, char **argv)
 {
     int num_stores, i;
-    uint64_t ts, time;
+    uint64_t ts, time, ts1, time1 = 0;
     //count_init
 
     // warmup
@@ -28,9 +28,12 @@ int main(int argc, char **argv)
 
     ts = rdtsc();
     for(i = 0; i < NITER; i++) {
+        ts1 = rdtsc();
         //asm_code
+        time1 += rdtsc() - ts1;
+        // noop_code
     }
     time = rdtsc() - ts;
-    printf("%d:%lu\n", store_cnt, time / NITER);
+    printf("%d:%lu\n", store_cnt, time1 / NITER);
     return 0;
 }

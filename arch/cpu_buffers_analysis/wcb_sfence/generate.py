@@ -5,6 +5,7 @@ import sys
 tmpl_fname = sys.argv[1]
 out_fname = sys.argv[2]
 nstores = int(sys.argv[3])
+nnoops = int(sys.argv[4])
 
 def write_mov(out, offs) :
 	line = "            "
@@ -29,7 +30,7 @@ def write_asm_body(out) :
 	write_mov(out, i)
 
 	i = 0
-	while (i < 500) :
+	while (i < nnoops) :
 		line = "            "
 		line += "\"nop\\n\"\n"
 		out.write(line)
@@ -39,6 +40,20 @@ def write_asm_body(out) :
     
 	out.write("            : // No output\n")
 	out.write("            : [array] \"r\" (avx_out), [in] \"r\" (&avx_in), [mvqptr] \"r\" (movq)\n");
+	out.write("            : \"memory\", \"%xmm0\");\n")
+
+def write_noops(out) :
+	out.write("        asm volatile (\n");
+
+	i = 0
+	while (i < 10000) :
+		line = "            "
+		line += "\"nop\\n\"\n"
+		out.write(line)
+		i += 1
+    
+	out.write("            : // No output\n")
+	out.write("            : \n");
 	out.write("            : \"memory\", \"%xmm0\");\n")
 
 
@@ -51,6 +66,8 @@ out = open(out_fname, 'w');
 for l in tmpl:
 	if "asm_code" in l:
 		write_asm_body(out)
+	elif "noop_code" in l:
+		write_noops(out)
 	elif "count_init" in l:
 		out.write("    int store_cnt = " + str(nstores) + ";\n")
 	else:
