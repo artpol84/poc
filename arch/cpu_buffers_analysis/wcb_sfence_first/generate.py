@@ -22,13 +22,14 @@ def write_asm_body(out) :
 	out.write("        // Make sure that we are moving with 64B steps to write to a new cache line each time\n")
 	out.write("        asm volatile (\n");
 
-	write_mov(out, i)
+	write_mov(out, 0)
 	out.write("            \"sfence\\n\"\n")
 
 	i = 1
 	while (i < nstores):
 		write_mov(out, i)
 		i += 1
+
 
 	i = 0
 	while (i < nnoops) :
