@@ -21,6 +21,7 @@ def write_asm_body(out) :
 	out.write("        __m256i avx_in, avx_out[" + str(2 * array_size) + "];\n")
 	out.write("        // Make sure that we are moving with 64B steps to write to a new cache line each time\n")
 	out.write("        asm volatile (\n");
+
 	i = 0
 	while (i < (nstores - 1)):
 		write_mov(out, i)
@@ -35,8 +36,6 @@ def write_asm_body(out) :
 		line += "\"nop\\n\"\n"
 		out.write(line)
 		i += 1
-    
-	out.write("            \"sfence\\n\"\n")
     
 	out.write("            : // No output\n")
 	out.write("            : [array] \"r\" (avx_out), [in] \"r\" (&avx_in), [mvqptr] \"r\" (movq)\n");
