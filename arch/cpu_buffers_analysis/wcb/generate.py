@@ -6,6 +6,7 @@ tmpl_fname = sys.argv[1]
 out_fname = sys.argv[2]
 nstores = int(sys.argv[3])
 nnoops = int(sys.argv[4])
+nnoops_clean = int(sys.argv[5])
 
 def write_asm_body(out) :
 	array_size = nstores
@@ -37,7 +38,7 @@ def write_noops(out) :
 	out.write("        asm volatile (\n");
 
 	i = 0
-	while (i < 10000) :
+	while (i < nnoops_clean) :
 		line = "            "
 		line += "\"nop\\n\"\n"
 		out.write(line)
