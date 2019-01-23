@@ -3,6 +3,18 @@
 import sys
 import os
 
+# Output the command line
+cmdline = ""
+for i in sys.argv:
+    cmdline += i + " "
+print cmdline
+sys.stdout.flush()
+
+# Output the micro-architecture of the CPU
+os.system('gcc -o getarch ../x86/detect_arch/getarch.c')
+os.system('./getarch | grep uArch')
+os.system('rm getarch')
+
 argv_len = len(sys.argv)
 gen_script = sys.argv[1]
 max_stores = int(sys.argv[2])
@@ -23,7 +35,6 @@ else :
 remain = ""
 if ((argv_len > start) and (sys.argv[start] == '-')) :
     remain = " ".join(map(str, sys.argv[(start + 1):]))
-print remain
 
 gen_script += "/generate.py"
 i = 1
