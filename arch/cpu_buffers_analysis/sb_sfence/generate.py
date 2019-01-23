@@ -23,7 +23,7 @@ def write_asm_body(out) :
 	i += 1
 	out.write("            \"sfence\\n\"\n")
 
-	while (i < (nstores - 1)):
+	while (i < nstores):
 		write_mov(out, i)
 		i += 1
 
