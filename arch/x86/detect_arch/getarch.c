@@ -103,7 +103,6 @@ void GetProcessorFamily() {
     Family = ((CpuIdOutput[0] >> 8) & 0x0F) + ((CpuIdOutput[0] >> 20) & 0xFF);   // family code
     Model  = ((CpuIdOutput[0] >> 4) & 0x0F) | ((CpuIdOutput[0] >> 12) & 0xF0);   // model code
     // printf("\nCPU family 0x%X, model 0x%X\n", Family, Model);
-
     if (MVendor == INTEL)  {
         // Intel processor
         if (Family <  5)    MFamily = PRUNKNOWN;           // less than Pentium
@@ -131,7 +130,7 @@ void GetProcessorFamily() {
                 MFamily = INTEL_HASW;  break;              // Haswell
             case 0x3D: case 0x47: case 0x4F: case 0x56:
                 MFamily = INTEL_BROADW;  break;              // Broadwell
-            case 0x5E: 
+            case 0x5E: case 0x55: 
                 MFamily = INTEL_SKYL;  break;              // Skylake
             // low power processors:
             case 0x1C: case 0x26: case 0x27: case 0x35: case 0x36:
