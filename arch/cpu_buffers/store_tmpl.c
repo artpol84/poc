@@ -22,16 +22,20 @@ int main(int argc, char **argv)
 
     // warmup
     for(i = 0; i < 100; i++) {
-        //asm_code
+        // test_body
     }
+    
+    {
+    	// reset_code
+	}
 
 
     ts = rdtsc();
     for(i = 0; i < NITER; i++) {
         ts1 = rdtsc();
-        //asm_code
+        //test_body
         time1 += rdtsc() - ts1;
-        // noop_code
+        // reset_code
     }
     time = rdtsc() - ts;
     printf("%d:%lu\n", store_cnt, time1 / NITER);
