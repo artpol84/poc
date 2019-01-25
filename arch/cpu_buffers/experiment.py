@@ -14,6 +14,7 @@ sys.stdout.flush()
 os.system('gcc -o getarch ../x86/detect_arch/getarch.c')
 os.system('./getarch | grep uArch')
 os.system('rm getarch')
+os.system('cat /proc/cpuinfo | grep "model name" | uniq')
 
 argv_len = len(sys.argv)
 gen_script = sys.argv[1]

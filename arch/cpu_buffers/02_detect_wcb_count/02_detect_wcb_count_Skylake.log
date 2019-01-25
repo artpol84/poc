@@ -1,4 +1,4 @@
-./experiment.py 02_detect_wcb_count 20 
+./experiment.py 02_detect_wcb_count 25 
 uArch: Intel Skylake and later
 model name	: Intel(R) Xeon(R) Gold 6154 CPU @ 3.00GHz
 1:20
@@ -13,11 +13,16 @@ model name	: Intel(R) Xeon(R) Gold 6154 CPU @ 3.00GHz
 10:20
 11:20
 12:20
-13:1585
-14:1712
-15:2127
-16:3052
-17:4552
-18:5573
-19:6004
-20:6360
+13:2462
+14:2795
+15:3376
+16:4063
+17:5242
+18:5583
+19:5997
+20:6270
+21:6489
+22:6881
+23:7289
+24:7391
+25:7760
