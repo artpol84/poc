@@ -8,6 +8,8 @@ sys.path.insert(0,parentdir)
 
 import litmus_test_lib as lib
 
+full_writes = 1
+
 class wcb_w_sfence(lib.litmus_test) :
 	def test_body(self) :
 		self.out.write("        uint64_t movq[" + str(self.nstores) + "];\n")
@@ -20,9 +22,11 @@ class wcb_w_sfence(lib.litmus_test) :
 		line = "            "
 		line += "\"vmovntdq %%ymm0, 0(%[array])\\n\"\n"
 		self.out.write(line)
-		line = "            "
-		line += "\"vmovntdq %%ymm0, 32(%[array])\\n\"\n"
-		self.out.write(line)
+
+		if (full_writes ) :
+			line = "            "
+			line += "\"vmovntdq %%ymm0, 32(%[array])\\n\"\n"
+			self.out.write(line)
 
 	    # Put an SFENCE
 		self.out.write("            \"sfence\\n\"\n")
@@ -47,6 +51,10 @@ class wcb_w_sfence(lib.litmus_test) :
 		self.out.write("            : // No output\n")
 		self.out.write("            : [array] \"r\" (avx_out), [in] \"r\" (&avx_in), [mvqptr] \"r\" (movq)\n");
 		self.out.write("            : \"memory\", \"%xmm0\");\n")
+
+
+if ( len(sys.argv) > 6 ) :
+	full_writes = 0
 
 x = wcb_w_sfence()
 x.create_test()
