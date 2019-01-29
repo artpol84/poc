@@ -1,3 +1,7 @@
+#define _GNU_SOURCE
+#define __USE_GNU
+#include <sched.h>
+
 #include <stdio.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -25,6 +29,15 @@ void *f(void* thr_data)
 {
     int my_idx = *(int*)thr_data;
     int n;
+
+    cpu_set_t set;
+    CPU_ZERO(&set);
+    CPU_SET(my_idx, &set);
+    if( pthread_setaffinity_np(pthread_self(), sizeof(set), &set) ){
+        abort();
+    }
+
+
     while( !start );
 
     timings[my_idx][0] = GET_TS();
@@ -40,6 +53,10 @@ int main(int argc, char **argv)
 {
     int n;
 
+    struct timespec ts;
+    ts.tv_sec = 0;
+    ts.tv_nsec = 100000;
+
     if( argc < 3 ){
         printf("Want <nthr> and <niter>\n");
         return 0;
@@ -53,6 +70,9 @@ int main(int argc, char **argv)
         indexes[n] = n;
         pthread_create(&thr[n], NULL, f, &indexes[n]);
     }
+
+    nanosleep(&ts, NULL);
+
     start = 1;
     for( n = 0; n < nthr; ++n)
         pthread_join(thr[n], NULL);
