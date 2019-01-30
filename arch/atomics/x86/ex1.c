@@ -20,7 +20,6 @@
 volatile int acnt;
 volatile int start = 0;
 
-int cnt;
 int nthr, niter;
 int indexes[200];
 double timings[200][2];
@@ -43,7 +42,6 @@ void *f(void* thr_data)
     timings[my_idx][0] = GET_TS();
     for(n = 0; n < niter; ++n) {
         atomic_inc(&acnt, 1);
-        ++cnt; // undefined behavior, in practice some updates missed
     }
     timings[my_idx][1] = GET_TS();
     return 0;
