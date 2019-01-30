@@ -47,7 +47,6 @@ void *f(void* thr_data)
             int tmp = acnt;
             flag = CAS(&acnt, tmp, tmp + 1);
         }
-        ++cnt; // undefined behavior, in practice some updates missed
     }
     timings[my_idx][1] = GET_TS();
     return 0;
