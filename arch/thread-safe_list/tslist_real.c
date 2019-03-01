@@ -36,7 +36,7 @@ void tslist_append(tslist_t *list, void *ptr)
         while(last->next != NULL ){
             last = last->next;
         }
-        int64_t oldval = (int64_t)last->next;
+        int64_t oldval = NULL;
         if( CAS((int64_t*)&last->next, &oldval, (int64_t)elem) ){
             // If a pointer to the element was successfully added
             // set the new tail
