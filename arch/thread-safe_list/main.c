@@ -37,11 +37,10 @@ int main(int argc, char **argv)
 {
     int i;
     pthread_t *id;
+    double start, time = 0;
 
     process_args(argc,argv);
     bind_to_core(0);
-
-//    ts_base = GET_TS();
 
     pthread_barrier_init(&tbarrier, NULL, nthreads + 1);
 
@@ -54,10 +53,12 @@ int main(int argc, char **argv)
     }
 
     pthread_barrier_wait(&tbarrier);
+    start = GET_TS();
 
     for (i=0; i<nthreads; i++) {
         pthread_join(id[i], NULL);
     }
+    time = GET_TS() - start;
 
     tslist_elem_t *elem = tslist_first(list);
     int count = 0;
@@ -65,6 +66,16 @@ int main(int argc, char **argv)
         count++;
         elem = tslist_next(elem);
     }
+    printf("Number of elements is %d\n", count);
+    printf("Time: %lf\n", time * 1E6);
 
-    printf("Number of elements is %d", count);
+    elem = tslist_first(list);
+    while( elem ) {
+        elem = tslist_next(elem);
+        if( elem ) {
+            data_t *ptr = elem->ptr;
+            printf("(%d;%d) ", ptr->thread, ptr->seqn);
+        }
+    }
+    printf("\n");
 }
