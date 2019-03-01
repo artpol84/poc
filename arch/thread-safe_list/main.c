@@ -6,7 +6,7 @@
 pthread_barrier_t tbarrier;
 tslist_t *list;
 
-int global_thread_count = 1;
+int global_thread_count = 0;
 __thread int thread_id = 0;
 
 
@@ -17,8 +17,9 @@ typedef struct
 
 void *worker(void *tmp)
 {
-    data_t *data = calloc(nadds, sizeof(data_t));
-    int i;
+    data_t *data = calloc(nadds * nbatch, sizeof(data_t));
+    void *ptrs[nbatch];
+    int i, j;
 
     thread_id = atomic_inc(&global_thread_count, 1);
 
@@ -27,9 +28,13 @@ void *worker(void *tmp)
     pthread_barrier_wait(&tbarrier);
 
     for(i=0; i < nadds; i++) {
-        data[i].thread = thread_id;
-        data[i].seqn = i;
-        tslist_append(list, &data[i]);
+        for(j = 0; j < nbatch; j++) {
+            int idx = i * nbatch + j;
+            data[idx].thread = thread_id;
+            data[idx].seqn = i;
+            ptrs[j] = &data[idx];
+        }
+        tslist_append_batch(list, ptrs, nbatch);
     }
 }
 

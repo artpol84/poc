@@ -1,13 +1,15 @@
 #include <getopt.h>
 #include "common.h"
 
-int nthreads, nadds, nrems;
+int nthreads, nadds, nbatch, nskip, nrems;
 
 
 void set_default_args()
 {
     nthreads = DEFAULT_NTHREADS;
     nadds = 100;
+    nbatch = 1;
+    nskip = 1;
 }
 
 void usage(char *cmd)
@@ -17,6 +19,9 @@ void usage(char *cmd)
     fprintf(stderr, "\t-h\tDisplay this help\n");
     fprintf(stderr, "\t-n\tNumber of threads (default: %d)\n", nthreads);
     fprintf(stderr, "\t-a\tNumber of elements to add (default: %d)\n", nadds);
+    fprintf(stderr, "\t-b\tBatching appends by x elements (default: %d)\n", nbatch);
+    fprintf(stderr, "\t-s\tSkip n tail mismatches before adjusting list tail"
+                    " (default: %d)\n", nskip);
 }
 
 int check_unsigned(char *str)
@@ -30,7 +35,7 @@ void process_args(int argc, char **argv)
 
     set_default_args();
 
-    while((c = getopt(argc, argv, "hn:i:p:")) != -1) {
+    while((c = getopt(argc, argv, "hn:a:b:s:")) != -1) {
         printf("Process option '%c'\n", c);
         switch (c) {
         case 'h':
@@ -56,6 +61,18 @@ void process_args(int argc, char **argv)
             if (0 >= nadds) {
                 goto error;
             }
+            break;
+        case 'b':
+            if( !check_unsigned(optarg) ){
+                goto error;
+            }
+            nbatch = atoi(optarg);
+            break;
+        case 's':
+            if( !check_unsigned(optarg) ){
+                goto error;
+            }
+            nskip = atoi(optarg);
             break;
         default:
             c = -1;

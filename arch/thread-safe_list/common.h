@@ -26,7 +26,7 @@
     })
 
 #define DEFAULT_NTHREADS 1
-extern int nthreads, nadds, nrems;
+extern int nthreads, nadds, nbatch, nskip, nrems;
 
 void usage(char *cmd);
 void process_args(int argc, char **argv);
