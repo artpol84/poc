@@ -46,7 +46,9 @@ static inline void msc_lock(msc_lock_t *lock, int id)
      * code resulting in a deadlock
      */
     volatile uint32_t *flag = &my_record.locked;
-    while(*flag);
+    while(*flag) {
+        asm volatile ("pause" : : : "memory");
+    }
     // lock is taken
 }
 
@@ -59,7 +61,9 @@ static inline void msc_unlock(msc_lock_t *lock, int id)
 
     // Wait for the next record initialization
     volatile uint64_t *flag = (uint64_t*)&my_record.next;
-    while(!(*flag));
+    while(!(*flag)){
+        asm volatile ("pause" : : : "memory");
+    }
 
     // Release the next one in a queue
     compiler_fence();
