@@ -55,7 +55,7 @@ double performance_data[1024] = { 0 };
 void *worker(void *_id)
 {
     int i, tid = *((int*)_id);
-    int local_counter = 0;
+    volatile int local_counter = 0;
     bind_to_core(tid + 1);
 
     pthread_barrier_wait(&tbarrier);
@@ -70,12 +70,14 @@ void *worker(void *_id)
         } else {
             // In the performance measurement mode we don't want additional
             // cache invalidations, so deal with the local variable.
-            local_counter++;
+            int k;
+            for(k=0; k < workload; k++) {
+                local_counter++;
+            }
         }
         lock_unlock(tid);
     }
     performance_data[tid] = GET_TS() - start;
-//    sleep(100000);
 }
 
 int main(int argc, char **argv)

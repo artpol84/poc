@@ -1,7 +1,7 @@
 #include <getopt.h>
 #include "common.h"
 
-int nthreads, niter, verify_mode;
+int nthreads, niter, verify_mode, workload;
 
 
 void set_default_args()
@@ -9,6 +9,7 @@ void set_default_args()
     nthreads = DEFAULT_NTHREADS;
     niter = 100;
     verify_mode = 1;
+    workload = 1000;
 }
 
 void usage(char *cmd)
@@ -19,6 +20,7 @@ void usage(char *cmd)
     fprintf(stderr, "\t-n\tNumber of threads (default: %d)\n", nthreads);
     fprintf(stderr, "\t-i\tNumber of iterations per thread (default: %d)\n", niter);
     fprintf(stderr, "\t-v\tVerification mode (default: %d)\n", verify_mode);
+    fprintf(stderr, "\t-w\tVerification mode (default: %d)\n", workload);
 }
 
 int check_unsigned(char *str)
@@ -32,7 +34,7 @@ void process_args(int argc, char **argv)
 
     set_default_args();
 
-    while((c = getopt(argc, argv, "hn:i:v:")) != -1) {
+    while((c = getopt(argc, argv, "hn:i:v:w:")) != -1) {
         printf("Process option '%c'\n", c);
         switch (c) {
         case 'h':
@@ -59,6 +61,13 @@ void process_args(int argc, char **argv)
             }
             verify_mode = !!atoi(optarg);
             printf("verify_mode = %d\n", verify_mode);
+            break;
+        case 'w':
+            if( !check_unsigned(optarg) ){
+                goto error;
+            }
+            workload= atoi(optarg);
+            printf("workload = %d\n", workload);
             break;
         default:
             c = -1;
