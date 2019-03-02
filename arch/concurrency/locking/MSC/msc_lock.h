@@ -40,7 +40,13 @@ static inline void msc_lock(msc_lock_t *lock, int id)
     compiler_fence();
     prev->next = &my_record;
     compiler_fence();
-    while(my_record.locked);
+    /* TODO: Find out
+     * For some reasons "volatile" specifier of the structure field
+     * was unable to prevent compiler from optimizing this part of the
+     * code resulting in a deadlock
+     */
+    volatile uint32_t *flag = &my_record.locked;
+    while(*flag);
     // lock is taken
 }
 
@@ -52,7 +58,8 @@ static inline void msc_unlock(msc_lock_t *lock, int id)
     }
 
     // Wait for the next record initialization
-    while( NULL == my_record.next);
+    volatile uint64_t *flag = (uint64_t*)&my_record.next;
+    while(!(*flag));
 
     // Release the next one in a queue
     compiler_fence();
