@@ -32,14 +32,15 @@ mutex:
 MUTEX lock
 
 Invocation
-        :       48 89 c7                mov    %rax,%rdi                                                                                                                                                                                      
+```
+:       48 89 c7                mov    %rax,%rdi                                                                                                                                                                                      
         :       e8 8e 33 00 00          callq  405420 <__pthread_mutex_lock>
-
+```
 
 
 0000000000405420 <__pthread_mutex_lock>:
-
 Fast path
+```
   405476:       bf 01 00 00 00          mov    $0x1,%edi        // load 1 to EDI
   40547b:       31 c0                   xor    %eax,%eax        // Zero EAX
 ->40547d:       f0 41 0f b1 38          lock cmpxchg %edi,(%r8) // r8 contains the pointer to the mutex structure (__lock field)
@@ -53,9 +54,10 @@ Fast path
   405499:       90                      nop
   40549a:       31 c0                   xor    %eax,%eax        // ret code to 0
   40549c:       c3                      retq                    // Exit
+```
 
-
-Slow path (fitst acquisition)
+Slow path (already acquired)
+```
   405476:       bf 01 00 00 00          mov    $0x1,%edi        // load 1 to EDI
   40547b:       31 c0                   xor    %eax,%eax        // Zero EAX
 ->40547d:       f0 41 0f b1 38          lock cmpxchg %edi,(%r8) // r8 contains the pointer to the mutex structure (__lock field)
@@ -102,13 +104,12 @@ Slow path (fitst acquisition)
   405499:       90                      nop
   40549a:       31 c0                   xor    %eax,%eax        // ret code to 0
   40549c:       c3                      retq                    // Exit
-
+```
 
 MUTEX unlock
 
-
 Fast path:
-
+```
 00000000004065d0 <__pthread_mutex_unlock>:
   4065d0:       8b 77 10                mov    0x10(%rdi),%esi
   4065d3:       48 89 fa                mov    %rdi,%rdx
@@ -121,8 +122,10 @@ Fast path:
   406600:       90                      nop
   406601:       44 89 c0                mov    %r8d,%eax
   406604:       c3                      retq
+```
 
-
+Slow path
+```
   4065d0:       8b 77 10                mov    0x10(%rdi),%esi
   4065d3:       48 89 fa                mov    %rdi,%rdx
 ... // Dealing with specific lock kinds
@@ -159,3 +162,4 @@ Fast path:
   406600:       90                      nop
   406601:       44 89 c0                mov    %r8d,%eax
   406604:       c3                      retq
+```
