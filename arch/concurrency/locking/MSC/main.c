@@ -1,7 +1,7 @@
 #include "common.h"
 #include "msc_lock.h"
 
-#define MSC_LOCK
+//#define MSC_LOCK
 #ifdef MSC_LOCK
 msc_lock_t lock;
 static void lock_init()
@@ -35,12 +35,12 @@ static void lock_destroy()
     pthread_spin_destroy(&lock);
 }
 
-static void lock_lock()
+static void lock_lock(int id)
 {
     pthread_spin_lock(&lock);
 }
 
-static void lock_unlock()
+static void lock_unlock(int id)
 {
     pthread_spin_unlock(&lock);
 }

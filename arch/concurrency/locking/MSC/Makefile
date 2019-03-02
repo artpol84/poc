@@ -1,7 +1,10 @@
-all: lock_ovh
+all: spinlock_ovh msc_ovh
 
-lock_ovh: main.c msc_lock.h common.h common.c
-	gcc -O3 -g -o lock_ovh main.c common.c -lpthread
+spinlock_ovh: main.c msc_lock.h common.h common.c
+	gcc -O3 -g -o spinlock_ovh main.c common.c -lpthread
+
+msc_ovh: main.c msc_lock.h common.h common.c
+	gcc -O3 -g -o msc_ovh -DMSC_LOCK main.c common.c -lpthread
 
 clean:
-	rm -f lock_ovh
+	rm -f spinlock_ovh msc_ovh
