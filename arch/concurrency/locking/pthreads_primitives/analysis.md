@@ -1,11 +1,13 @@
 spinlock:
 
 Invocation:
-        :       48 8d 45 fc             lea    -0x4(%rbp),%rax                                                                                                                                                                                
-        :       48 89 c7                mov    %rax,%rdi                                                                                                                                                                                      
-        :       e8 8e 59 00 00          callq  407a20 <pthread_spin_lock>    
-
+```
+        :       48 8d 45 fc             lea    -0x4(%rbp),%rax
+        :       48 89 c7                mov    %rax,%rdi
+        :       e8 8e 59 00 00          callq  407a20 <pthread_spin_lock>
+```
 Function:
+```
  acquire:       f0 ff 0f                lock decl (%rdi)
         :       75 0b                   jne    407a30 <pthread_spin_lock+0x10>
         :       31 c0                   xor    %eax,%eax
@@ -16,12 +18,14 @@ Function:
         :       83 3f 00                cmpl   $0x0,(%rdi)
         :       7f e9                   jg     sleep
         :       eb f7                   jmp    acquire
-
+```
+release (same as init)
+```
 0000000000407a60 <pthread_spin_init>:
         :       c7 07 01 00 00 00       movl   $0x1,(%rdi)
         :       31 c0                   xor    %eax,%eax
         :       c3                      retq
-
+```
 
 mutex:
 
