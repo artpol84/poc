@@ -75,6 +75,7 @@ void *worker(void *_id)
         lock_unlock(tid);
     }
     performance_data[tid] = GET_TS() - start;
+//    sleep(100000);
 }
 
 int main(int argc, char **argv)
@@ -110,6 +111,13 @@ int main(int argc, char **argv)
     }
 
     printf("Average latency / lock acquire: %lf us\n", 1E6 * sum / (nthreads * niter));
-
+    
+    if( verify_mode ){
+	if( global_counter != nthreads * niter ) {
+	    printf("Verification: FAILED!\n");
+	} else {
+	    printf("Verification: SUCCESS!\n");
+	}
+    }
 
 }
