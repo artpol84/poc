@@ -178,39 +178,57 @@ int main(int argc, char **argv)
 	}
     } else {
         int k;
-        uint64_t *t0 = (uint64_t*)timestamps[0], t0_cnt=0;
-        uint64_t *t1 = (uint64_t*)timestamps[1], t1_cnt=0;
-        uint64_t prev = min(t0[0], t1[0]);
-        uint64_t begin = prev;
-        uint64_t stat[ALL_LOCK] = { 0 };
+        uint64_t *prof[nthreads], prof_cnt[nthreads];
+        uint64_t begin = timestamps[0][0][0], prev;
         
-        for(k = 0; k < ALL_LOCK * niter; k++) {
-            int thr_id = -1;
-            int type = -1;
-            uint64_t val;
-            if( t0[t0_cnt] < t1[t1_cnt] ) {
-                val = t0[t0_cnt];
-                type = t0_cnt % ALL_LOCK;
-                thr_id = 0;
-                t0_cnt++;
-            } else {
-                val = t1[t1_cnt];
-                type = t1_cnt % ALL_LOCK;
-                thr_id = 1;
-                t1_cnt++;
-            }
-            stat[type] += val - prev;
+        for(k = 0; k < nthreads; k++){
+    	    prof[k] = (uint64_t*)timestamps[k];
+    	    prof_cnt[k] = 0;
+    	    if(begin > prof[k][0]) {
+    		begin = prof[k][0];
+    	    }
+    	}
+        prev = begin;
+        uint64_t stat[ALL_LOCK] = { 0 };
+        uint64_t stat_prev[ALL_LOCK] = { begin, begin, begin, begin };
+        
+        for(k = 0; k < ALL_LOCK * niter * nthreads; k++) {
+            int min;
+            for(min = 0; min < nthreads; min++){
+        	if(prof_cnt[min] < niter * ALL_LOCK) {
+        	    break;
+        	}
+    	    }
+
+            for(i = 0; i < nthreads; i++){
+        	if( prof_cnt[i] >= niter * ALL_LOCK ){
+        	    continue;
+        	}
+        	if(prof[min][prof_cnt[min]] > prof[i][prof_cnt[i]] ){
+        	    min = i;
+        	}
+    	    }
+    	    
+    	    int type = prof_cnt[min] % ALL_LOCK;
+    	    uint64_t val = prof[min][prof_cnt[min]];
+    	    prof_cnt[min]++;
+    	    if( type == ACQ_LOCK ) {
+    		stat[ACQ_LOCK] += val - stat_prev[REL_LOCK];
+    	    }
+    	    stat_prev[type] = val;
             char tmp[256];
-            sprintf(tmp, "(!!!: %lu", (val - begin));
+            sprintf(tmp, "(!!!: %lu)", (val - begin));
             printf("%lu: %d [%s] %s\n", 
-                    val - prev, thr_id, get_type(type),
+                    val - prev, min, get_type(type),
                     ((type == ACQ_LOCK) && ((val - prev) > 10000)) ? tmp : "" );
             prev = val;
-        }
+    	}
         
-        for(k = 0; k < ALL_LOCK; k++) {
-            printf("[%s]: %lf\n", get_type(k), (double)stat[k] / (2 * niter));
-        }
+        //for(k = 0; k < ALL_LOCK; k++) {
+    	k = ACQ_LOCK;
+            printf("[%s]: %lf\n", get_type(k), (double)stat[k] / (nthreads * niter));
+        //}
+
     }
 
     
