@@ -47,9 +47,24 @@ static inline void msc_lock(msc_lock_t *lock, int id)
      */
     volatile uint32_t *flag = &my_record.locked;
     while(*flag) {
-        asm volatile ("pause" : : : "memory");
+        asm volatile (
+            "label:\n" 
+            "   pause\n" 
+            "   cmp $0, (%[flag])\n"
+            "   jne label\n"
+            :
+            : [flag] "r" (flag)
+            : "memory");
     }
     // lock is taken
+}
+
+static inline void msc_touch(msc_lock_t *lock, int id)
+{
+    // Move remote cache line into the shared state
+    if( my_record.next ) {
+        my_record.next->locked = 1;
+    }
 }
 
 static inline void msc_unlock(msc_lock_t *lock, int id)
@@ -68,6 +83,7 @@ static inline void msc_unlock(msc_lock_t *lock, int id)
     // Release the next one in a queue
     compiler_fence();
     my_record.next->locked =0;
+    asm volatile ("sfence" : : : "memory");
     // lock is released
     my_record.next = NULL;
     my_record.locked = 0;
