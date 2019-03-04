@@ -3,6 +3,11 @@
 
 #include "x86.h"
 
+/*
+ * BAsed on https://www.cs.rochester.edu/u/scott/papers/1990_TR342.pdf
+ */
+ 
+
 #define compiler_fence() { asm volatile ("" : : : "memory"); }
 
 typedef struct msc_list_s {
