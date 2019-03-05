@@ -53,10 +53,10 @@ static inline void msc_lock(msc_lock_t *lock, int id)
     volatile uint32_t *flag = &my_record.locked;
     while(*flag) {
         asm volatile (
-            "label:\n" 
+            "label%=:\n" 
             "   pause\n" 
             "   cmp $0, (%[flag])\n"
-            "   jne label\n"
+            "   jne label%=\n"
             :
             : [flag] "r" (flag)
             : "memory");
