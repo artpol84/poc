@@ -64,6 +64,7 @@ enum {
     ACQ_LOCK,
     REL_LOCK,
     DONE_LOCK,
+    DONE_WORK,
     ALL_LOCK
 };
 
@@ -74,6 +75,7 @@ char *get_type(int id)
     case ACQ_LOCK: return "AQC_LOCK";
     case REL_LOCK: return "REL_LOCK";
     case DONE_LOCK:return "DONE_LOCK";
+    case DONE_WORK:return "DONE_WORK";
     }
 }
 
@@ -104,10 +106,16 @@ void *worker(void *_id)
 
     double start = GET_TS();
     for(i=0; i < niter; i++) {
-        wl_start = rdtsc();
-        timestamps[tid][i][REQ_LOCK] = rdtsc();
-        lock_lock(tid);
-        timestamps[tid][i][ACQ_LOCK] = rdtsc();
+        int k;
+
+	if( profile ) {
+            wl_start = rdtsc();
+	    timestamps[tid][i][REQ_LOCK] = rdtsc();
+            lock_lock(tid);
+	    timestamps[tid][i][ACQ_LOCK] = rdtsc();
+	} else  {
+            lock_lock(tid);
+	}
 
         if( verify_mode ) {
             // In the verification mode we want to make sure that
@@ -116,7 +124,6 @@ void *worker(void *_id)
         } else {
             // In the performance measurement mode we don't want additional
             // cache invalidations, so deal with the local variable.
-            int k;
             wl_start = rdtsc();
             for(k=0; k < workload; k++) {
                 if( !(k & ((1<<8) - 1)) ) {
@@ -129,9 +136,49 @@ void *worker(void *_id)
                     : "memory");
             }
         }
-        timestamps[tid][i][REL_LOCK] = rdtsc();
-        lock_unlock(tid);
-        timestamps[tid][i][DONE_LOCK] = rdtsc();
+        
+        if( profile ) {
+            timestamps[tid][i][REL_LOCK] = rdtsc();
+	    lock_unlock(tid);
+    	    timestamps[tid][i][DONE_LOCK] = rdtsc();
+    	} else {
+	    lock_unlock(tid);	
+    	}
+
+	/* Perform unlocked workload */
+        for(k=0; k < (unlocked_workload >> 4); k++) {
+            asm volatile (
+                "incl (%[ptr])\n" 
+                "incl (%[ptr])\n" 
+                "incl (%[ptr])\n" 
+                "incl (%[ptr])\n" 
+                "incl (%[ptr])\n" 
+                "incl (%[ptr])\n" 
+                "incl (%[ptr])\n" 
+                "incl (%[ptr])\n" 
+                "incl (%[ptr])\n" 
+                "incl (%[ptr])\n" 
+                "incl (%[ptr])\n" 
+                "incl (%[ptr])\n" 
+                "incl (%[ptr])\n" 
+                "incl (%[ptr])\n" 
+                "incl (%[ptr])\n" 
+                "incl (%[ptr])\n" 
+                :
+                : [ptr] "r" (&local_counter)
+                : "memory");
+	}
+	
+        for(k=0; k < (unlocked_workload & ((1<<4) - 1)); k++) {
+            asm volatile (
+                "incl (%[ptr])\n" 
+                :
+                : [ptr] "r" (&local_counter)
+                : "memory");
+        }
+	if( profile ) {
+            timestamps[tid][i][DONE_WORK] = rdtsc();
+        }
     }
     performance_data[tid] = GET_TS() - start;
 }
@@ -176,7 +223,7 @@ int main(int argc, char **argv)
 	} else {
 	    printf("Verification: SUCCESS!\n");
 	}
-    } else {
+    } else if( profile ) {
         int k;
         uint64_t *prof[nthreads], prof_cnt[nthreads];
         uint64_t begin = timestamps[0][0][0], prev;
@@ -191,6 +238,7 @@ int main(int argc, char **argv)
         prev = begin;
         uint64_t stat[ALL_LOCK] = { 0 };
         uint64_t stat_prev[ALL_LOCK] = { begin, begin, begin, begin };
+
         
         for(k = 0; k < ALL_LOCK * niter * nthreads; k++) {
             int min;
@@ -224,11 +272,17 @@ int main(int argc, char **argv)
             prev = val;
     	}
         
-        //for(k = 0; k < ALL_LOCK; k++) {
-    	k = ACQ_LOCK;
-            printf("[%s]: %lf\n", get_type(k), (double)stat[k] / (nthreads * niter));
-        //}
+        uint64_t cum_unlocked_work = 0;
+        for(k = 0; k < niter; k++){
+    	    cum_unlocked_work += prof[0][k * ALL_LOCK + DONE_WORK] - prof[0][k * ALL_LOCK + DONE_LOCK];
+        }
 
+    	k = ACQ_LOCK;
+        printf("[%s]: %lf\n", 
+    	    get_type(k), (double)stat[k] / (nthreads * niter));
+    	    
+    	
+    	
     }
 
     

@@ -26,7 +26,7 @@
     })
 
 #define DEFAULT_NTHREADS 1
-extern int nthreads, niter, verify_mode, workload;
+extern int nthreads, niter, verify_mode, workload, unlocked_workload, profile;
 
 void usage(char *cmd);
 void process_args(int argc, char **argv);
