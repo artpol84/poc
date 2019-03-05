@@ -93,12 +93,34 @@ inline uint64_t rdtsc() {
     return ts;
 }
 
+int **core_map = NULL;
+int nnuma = -1;
+int ncores = -1;
+
+int find_numa(int cpu)
+{
+    int i,j;
+    for(i = 0; i <nnuma; i++){
+	for(j = 0; j < ncores; j++) {
+	    if( cpu == core_map[i][j])
+		return i;
+	}
+    }
+    printf("Can't find CPU!!!\n");
+    abort();
+}
+
+int same_numa(int cpu1, int cpu2)
+{
+    return (find_numa(cpu1) == find_numa(cpu2));
+}
+
 #define min(a,b) ( (a > b) ? b : a )
 
 void *worker(void *_id)
 {
     int i, tid = *((int*)_id);
-    volatile int local_counter = 0;
+    int local_counter = 0;
     bind_to_core(tid);
     uint64_t wl_start;
 
@@ -124,11 +146,7 @@ void *worker(void *_id)
         } else {
             // In the performance measurement mode we don't want additional
             // cache invalidations, so deal with the local variable.
-            wl_start = rdtsc();
             for(k=0; k < workload; k++) {
-                if( !(k & ((1<<8) - 1)) ) {
-                        lock_touch(tid);
-                }
                 asm volatile (
                     "incl (%[ptr])\n" 
                     :
@@ -227,6 +245,10 @@ int main(int argc, char **argv)
         int k;
         uint64_t *prof[nthreads], prof_cnt[nthreads];
         uint64_t begin = timestamps[0][0][0], prev;
+        int prev_cpu = -1;
+        int numa_switch = 0;
+
+	get_topo(&core_map, &nnuma, &ncores);
         
         for(k = 0; k < nthreads; k++){
     	    prof[k] = (uint64_t*)timestamps[k];
@@ -262,6 +284,16 @@ int main(int argc, char **argv)
     	    prof_cnt[min]++;
     	    if( type == ACQ_LOCK ) {
     		stat[ACQ_LOCK] += val - stat_prev[REL_LOCK];
+    		if( 0 < nnuma ) {
+    		    if(prev_cpu < 0) {
+    			prev_cpu = min;
+    		    } else {
+    			if( !same_numa(prev_cpu, min) ) {
+    			    numa_switch++;
+    			}
+    			prev_cpu = min;
+    		    }
+    		}
     	    }
     	    stat_prev[type] = val;
             char tmp[256];
@@ -272,17 +304,14 @@ int main(int argc, char **argv)
             prev = val;
     	}
         
-        uint64_t cum_unlocked_work = 0;
-        for(k = 0; k < niter; k++){
-    	    cum_unlocked_work += prof[0][k * ALL_LOCK + DONE_WORK] - prof[0][k * ALL_LOCK + DONE_LOCK];
-        }
-
-    	k = ACQ_LOCK;
-        printf("[%s]: %lf\n", 
-    	    get_type(k), (double)stat[k] / (nthreads * niter));
-    	    
-    	
-    	
+	//for(k=0; k < ALL_LOCK; k++) {
+        k = ACQ_LOCK;
+            printf("[%s]: %lf", get_type(k), (double)stat[k] / (nthreads * niter));
+	    if( 0 < nnuma ){
+	        printf("; numa_switch = %d", numa_switch);
+    	    }
+    	//}
+    	printf("\n");
     }
 
     

@@ -31,5 +31,6 @@ extern int nthreads, niter, verify_mode, workload, unlocked_workload, profile;
 void usage(char *cmd);
 void process_args(int argc, char **argv);
 void bind_to_core(int thr_idx);
+void get_topo(int ***out_topo, int *nnuma, int *ncores);
 
 #endif // COMMON_H

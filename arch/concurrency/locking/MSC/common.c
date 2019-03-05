@@ -1,7 +1,10 @@
 #include <getopt.h>
 #include "common.h"
+#include <sys/stat.h>
 
 int nthreads, niter, verify_mode, workload, unlocked_workload, profile;
+
+char base_path[1024];
 
 void set_default_args()
 {
@@ -101,6 +104,15 @@ void process_args(int argc, char **argv)
 	exit(1);
     }
     
+    char *ptr = strrchr(argv[0],'/');
+    if( ptr != NULL ) {
+	int len = (ptr - argv[0]) + 1;
+	strncpy(base_path,argv[0],len);
+	base_path[len+1] = '\0';
+    }
+    
+    printf("base path = %s\n", base_path);
+    
     return;
 error:
     if( c != -1 ){
@@ -138,4 +150,54 @@ void bind_to_core(int thr_idx)
     if( pthread_setaffinity_np(pthread_self(), sizeof(set), &set) ){
         abort();
     }
+}
+
+
+
+void get_topo(int ***out_topo, int *nnuma, int *ncores)
+{
+    char fname[1024];
+    char cmd[1024];
+    struct stat buf;
+    int i;
+
+    *nnuma = -1;
+    *ncores = -1;
+    *out_topo = NULL;
+    sprintf(fname, "%sscripts/%s", base_path, "parse_lstopo.py");
+    if( stat(fname, &buf) ){
+	printf("WARNING: unable to get topology\n");
+	return;
+    }
+    if( !S_ISREG(buf.st_mode) ){
+	printf("WARNING: unable to get topology\n");
+	return;
+    }
+    sprintf(cmd, "python %s", fname);
+    FILE *fp = popen(cmd, "r");
+    if( NULL == fp ){
+	printf("WARNING: unable to get topology\n");
+	return;
+    }
+    fscanf(fp, "%d", nnuma);
+    if( 0 > *nnuma ){
+	printf("WARNING: unable to get topology\n");
+	return;
+    }
+
+    fscanf(fp, "%d", ncores);
+    if( 0 > *ncores ){
+	printf("WARNING: unable to get topology\n");
+	return;
+    }
+    
+    *out_topo = calloc(*nnuma, sizeof(**out_topo));
+    for(i=0; i < *nnuma; i++) {
+	int j;
+	(*out_topo)[i] = calloc(*ncores, sizeof(***out_topo));
+	for(j = 0; j < *ncores; j++) {
+	    fscanf(fp, "%d", &(*out_topo)[i][j]);
+	}
+    }
+    pclose(fp);
 }
