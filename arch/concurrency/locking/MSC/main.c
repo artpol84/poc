@@ -116,6 +116,7 @@ int same_numa(int cpu1, int cpu2)
 }
 
 #define min(a,b) ( (a > b) ? b : a )
+#define max(a,b) ( (a < b) ? b : a )
 
 void *worker(void *_id)
 {
@@ -228,12 +229,12 @@ int main(int argc, char **argv)
 
     lock_destroy();
 
-    double sum = 0;
+    double max_time = 0;
     for(i=0; i < nthreads; i++) {
-        sum += performance_data[i];
+        max_time = max(max_time, performance_data[i]);
     }
 
-    printf("Average latency / lock acquire: %lf us\n", 1E6 * sum / (nthreads * niter));
+    printf("Average latency / lock acquire: %lf us\n", 1E6 * max_time / niter);
     
     if( verify_mode ){
 	if( global_counter != nthreads * niter ) {
@@ -295,6 +296,9 @@ int main(int argc, char **argv)
     		    }
     		}
     	    }
+    	    if( type == REL_LOCK ) {
+    		stat[REL_LOCK] += val - stat_prev[ACQ_LOCK];
+    	    }
     	    stat_prev[type] = val;
             char tmp[256];
             sprintf(tmp, "(!!!: %lu)", (val - begin));
@@ -304,13 +308,14 @@ int main(int argc, char **argv)
             prev = val;
     	}
         
-	//for(k=0; k < ALL_LOCK; k++) {
         k = ACQ_LOCK;
-            printf("[%s]: %lf", get_type(k), (double)stat[k] / (nthreads * niter));
-	    if( 0 < nnuma ){
-	        printf("; numa_switch = %d", numa_switch);
-    	    }
-    	//}
+        printf("[%s]: %lf\n", get_type(k), (double)stat[k] / (nthreads * niter));
+    	k = REL_LOCK;
+        printf("[%s]: %lf\n", get_type(k), (double)stat[k] / (nthreads * niter));
+
+	if( 0 < nnuma ){
+	    printf("numa_switch = %d", numa_switch);
+	}
     	printf("\n");
     }
 
