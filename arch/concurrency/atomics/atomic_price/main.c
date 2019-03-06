@@ -300,7 +300,7 @@ int main(int argc, char **argv)
     
 	for(i = 0; i < NUM_PROBES; i++){
     	    intervals[i] = probes[i+1] - probes[i];
-    	    if( t == 0 ){
+    	    if( 0 &&  t == 0 ){
     		printf("%lu\n", intervals[i]);
     	    }
         }
