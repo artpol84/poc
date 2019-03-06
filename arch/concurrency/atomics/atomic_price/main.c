@@ -37,7 +37,7 @@ inline void sfence() {
 uint64_t shared_val;
 int operations_cnt = 0;
 int stop = 0;
-#define NUM_PROBES (10 * 1024 * 1024)
+#define NUM_PROBES (1 * 1024 * 1024)
 uint64_t probes[NUM_PROBES + 1] = { 0 };
 uint64_t intervals[NUM_PROBES] = { 0 };
 
@@ -88,7 +88,7 @@ void *reader(void *_unused)
 	probes[i] = rdtsc();
 	for(j=0; j<1024; j++){
 	    asm volatile ( 
-    		"mov (%[ptr]), %%rax\n\t"
+    		"movl (%[ptr]), %%eax\n\t"
 	        : 
 	        : [ptr] "r" (&shared_val)
 	        : "rax");
@@ -117,7 +117,7 @@ void *writer_mov(void *cbdata)
 	for(j=0; j<10*1024; j++){
 	    asm volatile ( "inc %[ptr]\n\t" 
 		: 
-		: [ptr] "r" (&tmp)  
+		: [ptr] "r" (tmp)  
 		: "memory", "cc" );
 	}
 	if( use_sfence ){
@@ -151,7 +151,7 @@ void *writer_cas(void *cbdata)
 	for(j=0; j<10*1024; j++){
 	    asm volatile ( "inc %[ptr]\n\t" 
 		: 
-		: [ptr] "r" (&tmp)  
+		: [ptr] "r" (tmp)  
 		: "memory", "cc" );
 	}
 	if( use_sfence ){
@@ -180,7 +180,7 @@ void *writer_inc(void *cbdata)
 	for(j=0; j<10*1024; j++){
 	    asm volatile ( "inc %[ptr]\n\t" 
 		: 
-		: [ptr] "r" (&tmp)  
+		: [ptr] "r" (tmp)  
 		: "memory", "cc" );
 	}
 	if( use_sfence ){
@@ -209,7 +209,7 @@ void *writer_swap(void *cbdata)
 	for(j=0; j<10*1024; j++){
 	    asm volatile ( "inc %[ptr]\n\t" 
 		: 
-		: [ptr] "r" (&tmp)  
+		: [ptr] "r" (tmp)  
 		: "memory", "cc" );
 	}
 	if( use_sfence ){
@@ -300,7 +300,7 @@ int main(int argc, char **argv)
     
 	for(i = 0; i < NUM_PROBES; i++){
     	    intervals[i] = probes[i+1] - probes[i];
-    	    if( 0 &&  t == 0 ){
+    	    if( 0 &&  t == 1 ){
     		printf("%lu\n", intervals[i]);
     	    }
         }
