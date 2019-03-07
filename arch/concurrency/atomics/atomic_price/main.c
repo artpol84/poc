@@ -88,7 +88,7 @@ void *reader(void *_unused)
 	probes[i] = rdtsc();
 	for(j=0; j<1024; j++){
 	    asm volatile ( 
-    		"movl (%[ptr]), %%eax\n\t"
+		"mov (%[ptr]), %%rax\n\t"
 	        : 
 	        : [ptr] "r" (&shared_val)
 	        : "rax");
