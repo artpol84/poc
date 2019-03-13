@@ -6,8 +6,8 @@
 pthread_barrier_t tbarrier;
 tslist_t *list;
 
-int global_thread_count = 0;
-__thread int thread_id = 0;
+int global_thread_count = -1;
+__thread int thread_id = -1;
 
 
 typedef struct
@@ -45,7 +45,7 @@ int main(int argc, char **argv)
     double start, time = 0;
 
     process_args(argc,argv);
-    bind_to_core(0);
+//    bind_to_core(0);
 
     pthread_barrier_init(&tbarrier, NULL, nthreads + 1);
 
@@ -73,7 +73,8 @@ int main(int argc, char **argv)
     }
     printf("Number of elements is %d\n", count);
     printf("Time: %lf\n", time * 1E6);
-
+    printf("Performance: %lf Melem/s\n", count / time / 1E6);
+/*
     elem = tslist_first(list);
     while( elem ) {
         elem = tslist_next(elem);
@@ -83,4 +84,5 @@ int main(int argc, char **argv)
         }
     }
     printf("\n");
+*/
 }
