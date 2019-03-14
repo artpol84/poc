@@ -1,5 +1,6 @@
 #include <getopt.h>
 #include "common.h"
+#include "x86.h"
 
 int nthreads, nadds, nbatch, nskip, nrems;
 
@@ -116,4 +117,15 @@ void bind_to_core(int thr_idx)
     if( pthread_setaffinity_np(pthread_self(), sizeof(set), &set) ){
         abort();
     }
+}
+
+int32_t global_thread_id = -1;
+__thread int32_t local_thread_id = -1;
+
+uint32_t get_thread_id()
+{
+    if( local_thread_id < 0 ){
+        local_thread_id = atomic_inc(&global_thread_id, 1);
+    }
+    return local_thread_id;
 }

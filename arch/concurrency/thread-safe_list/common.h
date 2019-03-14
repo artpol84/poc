@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 #include <assert.h>
 #include <stdio.h>
@@ -31,5 +32,6 @@ extern int nthreads, nadds, nbatch, nskip, nrems;
 void usage(char *cmd);
 void process_args(int argc, char **argv);
 void bind_to_core(int thr_idx);
+uint32_t get_thread_id();
 
 #endif // COMMON_H

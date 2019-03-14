@@ -50,7 +50,7 @@ int main(int argc, char **argv)
     pthread_barrier_init(&tbarrier, NULL, nthreads + 1);
 
     id = calloc(nthreads, sizeof(*id));
-    list = tslist_create();
+    list = tslist_create(nthreads, nadds * nbatch);
 
     /* setup and create threads */
     for (i=0; i<nthreads; i++) {

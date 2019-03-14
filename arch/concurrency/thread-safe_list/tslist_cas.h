@@ -7,7 +7,6 @@ typedef struct tslist_elem_s {
 } tslist_elem_t;
 
 typedef struct tslist_s {
-    int _list_size;
     tslist_elem_t *head, *tail;
 } tslist_t;
 
