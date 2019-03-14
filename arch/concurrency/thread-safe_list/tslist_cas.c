@@ -1,5 +1,5 @@
 #include "common.h"
-#include TSLIST_HEADER
+#include "tslist.h"
 #include "x86.h"
 
 tslist_elem_t **elem_pool = NULL;
@@ -60,7 +60,7 @@ __thread int pool_cnt = 0;
 void tslist_append_batch(tslist_t *list, void **ptr, int count)
 {
     int i;
-    tslist_elem_t *head = calloc(1,sizeof(*head));
+    tslist_elem_t head_base = { 0 }, *head = &head_base;
     int tid = get_thread_id();
 
     for(i = 0; i < count; i++) {
@@ -70,7 +70,6 @@ void tslist_append_batch(tslist_t *list, void **ptr, int count)
         head->next = elem;
     }
     _append_to(list, head->next);
-    free(head);
 }
 
 
@@ -79,6 +78,10 @@ void tslist_append(tslist_t *list, void *ptr)
     tslist_append_batch(list, ptr, 1);
 }
 
+void tslist_append_done(tslist_t *list, int nthreads)
+{
+    /* This is a dummy function for fake list only */
+}
 
 tslist_elem_t *tslist_first(tslist_t *list)
 {
@@ -89,4 +92,3 @@ tslist_elem_t *tslist_next(tslist_elem_t *current)
 {
     return current->next;
 }
-

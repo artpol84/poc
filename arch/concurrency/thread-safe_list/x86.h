@@ -33,4 +33,15 @@ static inline int atomic_inc(volatile int32_t* v, int i)
     return (ret+i);
 }
 
+static inline int64_t atomic_swap(int64_t *addr, int64_t newval)
+{
+    int64_t oldval;
+
+    __asm__ __volatile__("xchgq %1, %0" :
+             "=r" (oldval), "+m" (*addr) :
+             "0" (newval) :
+             "memory");
+    return oldval;
+}
+
 #endif

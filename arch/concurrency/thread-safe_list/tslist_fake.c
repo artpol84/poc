@@ -1,10 +1,11 @@
 #include "common.h"
-#include "tslist_fake.h"
+#include "tslist.h"
 #include "x86.h"
 
+tslist_t **tl_lists = NULL;
+tslist_elem_t **elem_pool = NULL;
 
-
-tslist_t *tslist_create()
+static tslist_t *_init_tslist()
 {
     tslist_t *list = calloc(1, sizeof(*list));
     if( NULL == list ) {
@@ -13,6 +14,23 @@ tslist_t *tslist_create()
     list->head = calloc(1, sizeof(*list->head));
     list->tail = list->head;
 
+    return list;
+}
+
+tslist_t *tslist_create(int nthreads, int nelems)
+{
+    tl_lists = calloc(nthreads, sizeof(*tl_lists));
+    int i;
+    for(i = 0; i < nthreads; i++) {
+        tl_lists[i] = _init_tslist();
+    }
+
+    elem_pool = calloc(nthreads, sizeof(*elem_pool));
+    for(i=0; i<nthreads; i++){
+        elem_pool[i] = calloc(nelems, sizeof(*elem_pool[0]));
+    }
+
+    return _init_tslist();
 }
 void tslist_release(tslist_t *list)
 {
@@ -21,53 +39,35 @@ void tslist_release(tslist_t *list)
     free(list);
 }
 
-static void _append_to(tslist_t *list, tslist_elem_t *head)
-{
-    int count = 0;
-    // Get approximate tail
-    tslist_elem_t *last = list->tail;
 
-    // Search for the exact tail and append to it
-    while( 1 ) {
-        while(last->next != NULL ){
-            last = last->next;
-            count++;
-        }
-        int64_t oldval = 0;
-        if( CAS((int64_t*)&last->next, &oldval, (int64_t)head) ){
-            // If a pointer to the element was successfully added
-            // set the new tail
-            oldval = (int64_t)list->tail;
-            if( count > nskip ) {
-                // Only adjust te tale once in a while
-                CAS((int64_t*)&list->tail, &oldval, (int64_t)head);
-            }
-            break;
-        }
-    }
-}
-
+__thread int pool_cnt = 0;
 void tslist_append_batch(tslist_t *list, void **ptr, int count)
 {
     int i;
-    tslist_elem_t *head = calloc(1,sizeof(*head));
+    int tid = get_thread_id();
 
     for(i = 0; i < count; i++) {
-        tslist_elem_t *elem = calloc(1, sizeof(*elem));
+        tslist_elem_t *elem = &elem_pool[tid][pool_cnt++];
         elem->ptr = ptr[i];
-        elem->next = head->next;
-        head->next = elem;
+        elem->next = NULL;
+        tl_lists[tid]->tail->next = elem;
+        tl_lists[tid]->tail = elem;
     }
-    _append_to(list, head->next);
-    free(head);
 }
-
 
 void tslist_append(tslist_t *list, void *ptr)
 {
     tslist_append_batch(list, ptr, 1);
 }
 
+void tslist_append_done(tslist_t *list, int nthreads)
+{
+    int i;
+    for(i = 0; i < nthreads; i++) {
+        list->tail->next = tl_lists[i]->head->next;
+        list->tail = tl_lists[i]->tail;
+    }
+}
 
 tslist_elem_t *tslist_first(tslist_t *list)
 {

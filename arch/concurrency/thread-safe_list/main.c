@@ -1,5 +1,5 @@
 #include "common.h"
-#include TSLIST_HEADER
+#include "tslist.h"
 #include "x86.h"
 
 
@@ -64,6 +64,9 @@ int main(int argc, char **argv)
         pthread_join(id[i], NULL);
     }
     time = GET_TS() - start;
+
+    /* Used for the fake thread-safe list only */
+    tslist_append_done(list, nthreads);
 
     tslist_elem_t *elem = tslist_first(list);
     int count = 0;
