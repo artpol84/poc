@@ -1,5 +1,5 @@
 #include "common.h"
-#include "tslist.h"
+#include TSLIST_HEADER
 #include "x86.h"
 
 
