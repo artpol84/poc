@@ -62,9 +62,65 @@ void tslist_append(tslist_t *list, void *ptr)
     tslist_append_batch(list, ptr, 1);
 }
 
+int list_empty_cnt = 0;
+int list_first_added_cnt = 0;
+int list_extract_one_cnt = 0;
+int list_extract_last_cnt = 0;
+
+void tslist_dequeue(tslist_t *list, tslist_elem_t **_elem)
+{
+    *_elem = NULL;
+    if( list->head == list->tail ){
+        // the list is empty
+        list_empty_cnt++;
+        return;
+    }
+
+    if(list->head->next == NULL ){
+        // Someone is adding a new element, but it is not yet ready
+        list_first_added_cnt++;
+        return;
+    }
+
+    tslist_elem_t *elem = list->head->next;
+    if( elem->next ) {
+        /* We have more than one elements in the list
+         * it is safe to dequeue this elemen as only one thread
+         * is allowed to dequeue
+         */
+        list->head->next = elem->next;
+        *_elem = elem;
+        /* Terminate element */
+        elem->next = NULL;
+        /* No need to release in this test suite */
+        list_extract_one_cnt++;
+        return;
+    }
+
+    tslist_elem_t *iter;
+    /* requeue the dummy element to make sure that no one is adding currently */
+    list->head->next = NULL;
+    _append_to(list, list->head, list->head);
+    iter = elem;
+    while(iter->next != list->head) {
+        if((volatile void*)iter->next) {
+            iter = iter->next;
+        }
+    }
+    /* Terminate the extracted chain */
+    iter->next = NULL;
+    *_elem = elem;
+    list_extract_last_cnt++;
+    printf("!!!\n");
+}
+
 void tslist_append_done(tslist_t *list, int nthreads)
 {
     /* This is a dummy function for fake list only */
+    printf("list_empty_cnt = %d\n", list_empty_cnt);
+    printf("list_first_added_cnt =%d\n", list_first_added_cnt);
+    printf("list_extract_one_cnt = %d\n", list_extract_one_cnt);
+    printf("list_extract_last_cnt = %d\n", list_extract_last_cnt);
 }
 
 tslist_elem_t *tslist_first(tslist_t *list)

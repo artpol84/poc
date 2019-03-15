@@ -17,5 +17,6 @@ void tslist_append_batch(tslist_t *list, void **ptr, int count);
 void tslist_append_done(tslist_t *list, int nthreads);
 tslist_elem_t *tslist_first(tslist_t *list);
 tslist_elem_t *tslist_next(tslist_elem_t *current);
+void tslist_dequeue(tslist_t *list, tslist_elem_t **_elem);
 
 #endif
