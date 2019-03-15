@@ -135,7 +135,7 @@ function run_cmd()
     event=$3
     cmd="$PERF_CMD stat -e $event "
     if [ "$type" = "thread" ]; then
-	cmd="$cmd -i $pid "
+	cmd="$cmd -t $pid "
     else
 	cmd="$cmd -p $pid "
     fi
