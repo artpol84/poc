@@ -99,6 +99,10 @@ int main(int argc, char **argv)
         pthread_join(id[i], NULL);
     }
     time = GET_TS() - start;
+    int count = nthreads * nadds * nbatch;
+    printf("Number of elements is %d\n", count);
+    printf("Time: %lf\n", time * 1E6);
+    printf("Performance: %lf Melem/s\n", count / time / 1E6);
 
     tslist_append_done(list, nthreads);
 }
