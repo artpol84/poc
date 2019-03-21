@@ -44,6 +44,7 @@ static void _append_to(tslist_t *list, tslist_elem_t *head)
         }
         int64_t oldval = 0;
         if( CAS((int64_t*)&last->next, &oldval, (int64_t)head) ){
+            atomic_isync();
             // If a pointer to the element was successfully added
             // set the new tail
             oldval = (int64_t)list->tail;

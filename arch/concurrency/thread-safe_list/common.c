@@ -98,9 +98,6 @@ void bind_to_core(int thr_idx)
 
     /* How many cpus we have on the node */
     configured_cpus = sysconf(_SC_NPROCESSORS_CONF);
-    printf("configured_cpus = %ld\n", configured_cpus);
-    long online_cpus = sysconf(_SC_NPROCESSORS_ONLN);
-    printf("online_cpus = %ld\n", online_cpus);
 
     if( sizeof(set) * 8 < configured_cpus ){
         /* Shouldn't happen soon, currentlu # of cpus = 1024 */
@@ -117,7 +114,6 @@ void bind_to_core(int thr_idx)
 
     CPU_ZERO(&set);
     CPU_SET(thr_idx, &set);
-    printf("bind to %d\n", thr_idx);
     if( error = pthread_setaffinity_np(pthread_self(), sizeof(set), &set) ){
         printf("bind_to_core: pthread_setaffinity_np returned \"%d\"\n", error);
         exit(0);
