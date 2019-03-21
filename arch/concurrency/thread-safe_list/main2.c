@@ -1,6 +1,6 @@
 #include "common.h"
 #include "tslist.h"
-#include "x86.h"
+#include "arch.h"
 
 
 pthread_barrier_t tbarrier;

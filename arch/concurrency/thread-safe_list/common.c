@@ -1,6 +1,6 @@
 #include <getopt.h>
 #include "common.h"
-#include "x86.h"
+#include "arch.h"
 
 int nthreads, nadds, nbatch, nskip, nrems;
 
@@ -98,6 +98,9 @@ void bind_to_core(int thr_idx)
 
     /* How many cpus we have on the node */
     configured_cpus = sysconf(_SC_NPROCESSORS_CONF);
+    printf("configured_cpus = %ld\n", configured_cpus);
+    long online_cpus = sysconf(_SC_NPROCESSORS_ONLN);
+    printf("online_cpus = %ld\n", online_cpus);
 
     if( sizeof(set) * 8 < configured_cpus ){
         /* Shouldn't happen soon, currentlu # of cpus = 1024 */
@@ -114,8 +117,10 @@ void bind_to_core(int thr_idx)
 
     CPU_ZERO(&set);
     CPU_SET(thr_idx, &set);
-    if( pthread_setaffinity_np(pthread_self(), sizeof(set), &set) ){
-        abort();
+    printf("bind to %d\n", thr_idx);
+    if( error = pthread_setaffinity_np(pthread_self(), sizeof(set), &set) ){
+        printf("bind_to_core: pthread_setaffinity_np returned \"%d\"\n", error);
+        exit(0);
     }
 }
 
@@ -124,7 +129,7 @@ __thread int32_t local_thread_id = -1;
 
 uint32_t get_thread_id()
 {
-    if( local_thread_id < 0 ){
+    if( unlikely(local_thread_id < 0) ){
         local_thread_id = atomic_inc(&global_thread_id, 1);
     }
     return local_thread_id;

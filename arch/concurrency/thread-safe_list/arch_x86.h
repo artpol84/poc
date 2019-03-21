@@ -7,6 +7,12 @@
  * https://github.com/open-mpi/ompi/blob/master/opal/include/opal/sys/x86_64/atomic.h
  */
 
+#define MB()  __asm__ __volatile__ ("" : : : "memory")
+#define RMB() __asm__ __volatile__ ("" : : : "memory")
+#define WMB() __asm__ __volatile__ ("" : : : "memory")
+#define ISYNC() __asm__ __volatile__ ("" : : : "memory")
+
+
 #define SMPLOCK "lock; "
 
 static inline int CAS(int64_t *addr, int64_t *oldval, int64_t newval)
@@ -22,6 +28,7 @@ static inline int CAS(int64_t *addr, int64_t *oldval, int64_t newval)
 
    return (int) ret;
 }
+
 static inline int atomic_inc(volatile int32_t* v, int i)
 {
     int ret = i;

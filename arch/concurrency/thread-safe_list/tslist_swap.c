@@ -1,6 +1,6 @@
 #include "common.h"
 #include "tslist.h"
-#include "x86.h"
+#include "arch.h"
 
 tslist_elem_t **elem_pool = NULL;
 
@@ -34,6 +34,7 @@ static void _append_to(tslist_t *list, tslist_elem_t *head,
                        tslist_elem_t *tail)
 {
     tslist_elem_t *prev = (tslist_elem_t *)atomic_swap((uint64_t*)&list->tail, (uint64_t)tail);
+    atomic_wmb();
     prev->next = head;
 }
 
@@ -88,6 +89,7 @@ void tslist_dequeue(tslist_t *list, tslist_elem_t **_elem)
          * it is safe to dequeue this elemen as only one thread
          * is allowed to dequeue
          */
+        atomic_isync();
         list->head->next = elem->next;
         *_elem = elem;
         /* Terminate element */
@@ -103,6 +105,7 @@ void tslist_dequeue(tslist_t *list, tslist_elem_t **_elem)
     _append_to(list, list->head, list->head);
     iter = elem;
     while(iter->next != list->head) {
+        atomic_isync();
         if((volatile void*)iter->next) {
             iter = iter->next;
         }

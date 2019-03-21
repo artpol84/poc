@@ -1,6 +1,6 @@
 #include "common.h"
 #include "tslist.h"
-#include "x86.h"
+#include "arch.h"
 
 tslist_t **tl_lists = NULL;
 tslist_elem_t **elem_pool = NULL;

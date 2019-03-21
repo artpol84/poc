@@ -1,14 +1,10 @@
 #include "common.h"
 #include "tslist.h"
-#include "x86.h"
+#include "arch.h"
 
 
 pthread_barrier_t tbarrier;
 tslist_t *list;
-
-int global_thread_count = -1;
-__thread int thread_id = -1;
-
 
 typedef struct
 {
@@ -21,7 +17,7 @@ void *worker(void *tmp)
     void *ptrs[nbatch];
     int i, j;
 
-    thread_id = atomic_inc(&global_thread_count, 1);
+    int32_t thread_id = get_thread_id();
 
     bind_to_core(thread_id);
 
