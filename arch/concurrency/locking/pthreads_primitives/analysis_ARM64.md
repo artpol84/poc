@@ -138,3 +138,109 @@
     c908:       910043ff        add     sp, sp, #0x10
     c90c:       d65f03c0        ret
 ```
+
+## Mutex logic
+
+### Mutex startup code
+```
+0000000000009a68 <__pthread_mutex_lock>:
+    9a68:       a9bd7bfd        stp     x29, x30, [sp,#-48]!
+    9a6c:       910003fd        mov     x29, sp
+...
+```
+
+### Perform compare-and-swap (CAS) of the flag variable
+* Expect to have 0 value there in order to get the lock
+```
+    9a9c:       52800020        mov     w0, #0x1                        // #1
+    9aa0:       885ffe61        ldaxr   w1, [x19]
+    9aa4:       6b1f003f        cmp     w1, wzr
+    9aa8:       54000061        b.ne    9ab4 <__pthread_mutex_lock+0x4c>
+    9aac:       88027e60        stxr    w2, w0, [x19]
+    9ab0:       35ffff82        cbnz    w2, 9aa0 <__pthread_mutex_lock+0x38>
+```
+### Controlled by comparison from line ???? (cmp    w1, wzr)
+* If (w1 != 0) - goes through the slow path
+* If (w1 == 0) - fall thru to the fastpath exit
+```
+    9ab4:       540001c1        b.ne    9aec <__pthread_mutex_lock+0x84>
+```
+
+### Perform fastpath cleanup and return
+```
+    9ab8:       b94023a0        ldr     w0, [x29,#32]
+    9abc:       35000420        cbnz    w0, 9b40 <__pthread_mutex_lock+0xd8> 
+    9ac0:       b9400e61        ldr     w1, [x19,#12]
+    9ac4:       d11bc294        sub     x20, x20, #0x6f0
+    9ac8:       b940d280        ldr     w0, [x20,#208]
+    9acc:       11000421        add     w1, w1, #0x1
+    9ad0:       b9000a60        str     w0, [x19,#8]
+    9ad4:       b9000e61        str     w1, [x19,#12]
+    9ad8:       d503201f        nop
+    9adc:       52800000        mov     w0, #0x0                        // #0
+    9ae0:       a94153f3        ldp     x19, x20, [sp,#16]
+    9ae4:       a8c37bfd        ldp     x29, x30, [sp],#48
+    9ae8:       d65f03c0        ret
+```
+
+### Slow path - __lll_lock_wait
+* Read atomic flag value to see if it is equal to 0x2
+* if it is 0x2 someone already waiting for it so it jumps into the futex (similar to x86)
+* otherwise it first replaces 0x1 with 0x2 and then goes into the futex
+```
+    ef8c:       b9400000        ldr     w0, [x0]
+    ef90:       7100081f        cmp     w0, #0x2
+    ef94:       54000260        b.eq    efe0 <__lll_lock_wait+0x6c>
+
+```
+### Prepare for futex
+* See http://man7.org/linux/man-pages/man2/futex.2.html
+* 0x80 is (FUTEX_WAIT | FUTEX_PRIVATE_FLAG) - in this case mutex is private, not shared between procs
+```
+    ef98:       521902b5        eor     w21, w21, #0x80
+    ef9c:       52800054        mov     w20, #0x2                       // #2
+    efa0:       93407eb5        sxtw    x21, w21  
+    efa4:       14000007        b       efc0 <__lll_lock_wait+0x4c>
+```
+### attempt to switch value to 0x2 (atomic swap)
+* If the old value is non-zero - jump to a futex sequence
+* Fall-thru otherwise
+```
+    efc0:       885ffe60        ldaxr   w0, [x19]
+    efc4:       88017e74        stxr    w1, w20, [x19]
+    efc8:       35ffffc1        cbnz    w1, efc0 <__lll_lock_wait+0x4c>
+    efcc:       35fffee0        cbnz    w0, efa8 <__lll_lock_wait+0x34>
+```
+### Fall-thru - lock acquired
+```
+    efd0:       a94053f3        ldp     x19, x20, [sp]
+    efd4:       f9400bf5        ldr     x21, [sp,#16]
+    efd8:       910083ff        add     sp, sp, #0x20
+    efdc:       d65f03c0        ret
+```
+
+### Futex sequence
+* x0 = x19 - address of the mutex variable
+* x1 = 0x80 - (FUTEX_WAIT | FUTEX_PRIVATE_FLAG) operation
+* x2 = "0x02" - expected value that should be found by the address (if cahnged - futex won't sleep)
+* x3 = "0x00" - timeout - sleep indefinitely
+
+```
+    efa8:       aa1303e0        mov     x0, x19
+    efac:       aa1503e1        mov     x1, x21 
+    efb0:       d2800042        mov     x2, #0x2                        // #2
+    efb4:       d2800003        mov     x3, #0x0                        // #0
+    efb8:       d2800c48        mov     x8, #0x62                       // #98
+    efbc:       d4000001        svc     #0x0
+``` 
+
+### Futex sequence if futex address already contains 0x02
+    efe0:       52190021        eor     w1, w1, #0x80
+    efe4:       aa1303e0        mov     x0, x19
+    efe8:       93407c21        sxtw    x1, w1
+    efec:       d2800042        mov     x2, #0x2                        // #2
+    eff0:       d2800003        mov     x3, #0x0                        // #0
+    eff4:       d2800c48        mov     x8, #0x62                       // #98
+    eff8:       d4000001        svc     #0x0
+    effc:       17ffffe7        b       ef98 <__lll_lock_wait+0x24>
+```
