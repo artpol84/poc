@@ -1,23 +1,22 @@
-
-
+## Spin lock
 ```
 000000000000c85c <pthread_spin_lock>:
     c85c:       d10043ff        sub     sp, sp, #0x10
 ```
 
 ### Write 0x1 to the spinlock variable while in the exclusive mode
-
-  * LDAXR:
-    * Load-Acquire Exclusive Register derives an address from a base register value
-    * Loads a 32-bit word or 64-bit doubleword from memory, and writes it to a register. 
-    * The memory access is atomic. The PE marks the physical address being accessed as an exclusive access. This exclusive access mark is checked by Store Exclusive instructions.
-    * The instruction also has memory ordering semantics as described in Load-Acquire, Store-Release in the ARMv8-A Architecture Reference Manual.
-  * STXR Ws, Wt, [Xn|SP{,#0}] 
-    * Ws:
-      * 0 If the operation updates memory.
-      * 1 If the operation fails to update memory.
-    * Store Exclusive Register stores a 32-bit word or a 64-bit doubleword from a register to memory if the PE has exclusive access to the memory address
-    * And returns a status value of 0 if the store was successful, or of 1 if no store was performed. 
+* This is a logical SWAP operation: we read the old value to w1 and write a new value from w4
+* LDAXR:
+  * Load-Acquire Exclusive Register derives an address from a base register value
+  * Loads a 32-bit word or 64-bit doubleword from memory, and writes it to a register. 
+  * The memory access is atomic. The PE marks the physical address being accessed as an exclusive access. This exclusive access mark is checked by Store Exclusive instructions.
+  * The instruction also has memory ordering semantics as described in Load-Acquire, Store-Release in the ARMv8-A Architecture Reference Manual.
+* STXR Ws, Wt, [Xn|SP{,#0}] 
+  * Ws:
+    * 0 If the operation updates memory.
+    * 1 If the operation fails to update memory.
+  * Store Exclusive Register stores a 32-bit word or a 64-bit doubleword from a register to memory if the PE has exclusive access to the memory address
+  * And returns a status value of 0 if the store was successful, or of 1 if no store was performed. 
 ```
     c860:       52800024        mov     w4, #0x1                        // #1
     c864:       885ffc01        ldaxr   w1, [x0]
@@ -95,4 +94,47 @@
     c8d4:       52800000        mov     w0, #0x0                        // #0
     c8d8:       910043ff        add     sp, sp, #0x10
     c8dc:       d65f03c0        ret
+```
+
+## Spin try lock
+
+```
+000000000000c8e0 <pthread_spin_trylock>:
+    c8e0:       d10043ff        sub     sp, sp, #0x10
+```
+### Write 0x1 to the spinlock and get the old value (swap)
+* Note
+```
+    c8e4:       52800022        mov     w2, #0x1                        // #1
+    c8e8:       885ffc01        ldaxr   w1, [x0]
+    c8ec:       88037c02        stxr    w3, w2, [x0]
+    c8f0:       35ffffc3        cbnz    w3, c8e8 <pthread_spin_trylock+0x8>
+```
+### Compare obtained old value with zero (wzr)
+```
+    c8f4:       b9000fe1        str     w1, [sp,#12]
+    c8f8:       b9400fe0        ldr     w0, [sp,#12]
+    c8fc:       6b1f001f        cmp     w0, wzr
+```
+### Move 0x16 (Device or resource busy) error code to w0 
+```
+    c900:       52800200        mov     w0, #0x10                       // #16
+```
+### Set the ultimate error code
+* CSEL Wd, Wn, Wm, cond
+  * Arguments
+    * Wd: the 32-bit name of the general-purpose destination register.
+    * Wn: the 32-bit name of the first general-purpose source register.
+    * Wm: the 32-bit name of the second general-purpose source register.
+  * Conditional Select returns, in the destination register, the value of the first source register if the condition is TRUE, and otherwise returns the value of the second source register.
+* in this case we set w0 to 
+  * w0 (0x16) if the result of comparison in 0xc8fc is `ne` = Not Equal
+  * wzr (0) otherwise (if we took the lock)
+```
+    c904:       1a9f1000        csel    w0, w0, wzr, ne
+```
+### Exit sequence
+```
+    c908:       910043ff        add     sp, sp, #0x10
+    c90c:       d65f03c0        ret
 ```
