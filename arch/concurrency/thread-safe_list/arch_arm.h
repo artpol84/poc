@@ -34,7 +34,7 @@ static inline int CAS(int64_t *addr, int64_t *oldval, int64_t newval)
 }
 
 #define OPAL_ASM_MAKE_ATOMIC(type, bits, name, inst, reg)                   \
-    static inline type atomic_fetch_ ## name ## _ ## bits (type *addr, type value) \
+    static inline type _asm_atomic_fetch_ ## name ## _ ## bits (type *addr, type value) \
     {                                                                   \
         type newval, old;                                               \
         int32_t tmp;                                                    \
@@ -54,10 +54,10 @@ OPAL_ASM_MAKE_ATOMIC(int32_t, 32, add, "add", "w")
 
 static inline int32_t atomic_inc(int32_t *addr, int32_t value)
 {
-    return atomic_fetch_add_32(addr, value) + value;
+    return _asm_atomic_fetch_add_32(addr, value) + value;
 }
 
-static inline int64_t atomic_swap(int64_t *addr, int64_t newval)
+static inline int64_t _asm_atomic_swap_ldst(int64_t *addr, int64_t newval)
 {
     int64_t ret;
     int tmp;
@@ -70,6 +70,24 @@ static inline int64_t atomic_swap(int64_t *addr, int64_t newval)
                           : "cc", "memory");
 
     return ret;
+}
+
+static inline int64_t _asm_atomic_swap_lse(int64_t *addr, int64_t newval)
+{
+    int64_t ret;
+    int tmp;
+
+    __asm__ __volatile__ ("swpl %2, %0, [%1]\n"
+                          : "=&r" (ret)
+                          : "r" (addr), "r" (newval)
+                          : "cc", "memory");
+    return ret;
+}
+
+
+static inline int64_t atomic_swap(int64_t *addr, int64_t newval)
+{
+    return _asm_atomic_swap_lse(addr, newval);
 }
 
 #endif
