@@ -28,7 +28,7 @@ int pack_size(uint64_t size, uint8_t out_buf[9])
     return idx;
 }
 
-uint64_t unpack_size(uint8_t in_buf[])
+int unpack_size(uint8_t in_buf[], uint64_t *out_size)
 {
     uint64_t size = 0, shift = 0;
     int idx = 0;
@@ -44,7 +44,8 @@ uint64_t unpack_size(uint8_t in_buf[])
         val = in_buf[idx++];
         size = size + ((uint64_t)val << shift);
     }
-    return size;
+    *out_size = size;
+    return idx;
 }
 
 
@@ -66,8 +67,12 @@ int main()
 
     for(size = 0; size < 100000000000; size++) {
         uint8_t buf[9];
-        int s = pack_size(size, buf);
-        uint64_t nsize = unpack_size(buf);
+        uint64_t nsize;
+        int ps = pack_size(size, buf);
+        int us = unpack_size(buf, &nsize);
+        if( ps != us){
+            abort();
+        }
         if( nsize != size){
             abort();
         }
@@ -78,8 +83,12 @@ int main()
 
     for(size = (uint64_t)(-1) - 100000000000; size < (uint64_t)(-1); size++) {
         uint8_t buf[9];
-        int s = pack_size(size, buf);
-        uint64_t nsize = unpack_size(buf);
+        uint64_t nsize;
+        int ps = pack_size(size, buf);
+        int us = unpack_size(buf, &nsize);
+        if (ps != us){
+            abort();
+        }
         if( nsize != size){
             abort();
         }
