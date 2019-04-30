@@ -201,7 +201,15 @@ int main(int argc, char **argv)
 	int mapping = 2;
 	int i, j;
 	int ppn = 40;
+	int use_old = 0;
+	if( argc < 2 ){
+		printf("Need node count!\n");
+		return 0;
+	}
 	nsptr->nnodes = atoi(argv[1]);
+	if( argc > 2 ) {
+		use_old = 1;
+	}
 	nsptr->ntasks = nsptr->nnodes * ppn;
 	nsptr->task_cnts = xmalloc(sizeof(int) * nsptr->nnodes);
 	nsptr->task_map = xmalloc(sizeof(*nsptr->task_map) * nsptr->ntasks);
@@ -224,7 +232,12 @@ int main(int argc, char **argv)
 		}
 	}
 
-	char *output = _build_procmap_old(nsptr);
+	char *output = NULL;
+	if( use_old ) {
+		output = _build_procmap_old(nsptr);
+	} else {
+		output = _build_procmap(nsptr);
+	}
 //	printf("output = %s\n", output);
 	xfree(output);
 }
