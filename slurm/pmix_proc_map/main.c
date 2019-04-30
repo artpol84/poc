@@ -2,6 +2,8 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
+#include <time.h>
 
 #define xmalloc malloc
 #define xfree free
@@ -194,22 +196,99 @@ err_exit:
 	return NULL;
 }
 
+int task_map_verify(pmixp_namespace_t *nsptr, const char *output)
+{
+	int i, ret = 0;
+	char d1[] = ",", d2[] = ";";
+	char *node_ptr, *task_ptr;
+	char *task_str = strdup(output);
+	char *node_end_str = NULL;
+	uint32_t *task_map = xmalloc(sizeof(*task_map) * nsptr->ntasks);
+	int node_id, task_id;
+
+	size_t buf_size = _proc_map_buffer_size(nsptr);
+	size_t str_size = strlen(task_str);
+
+	if (str_size > str_size) {
+		ret = -1;
+		goto exit;
+	}
+
+	printf("used size=%lu, allocated size=%lu (diff=%0.2lf%%)\n",
+	       str_size, buf_size,
+	       (1.0-((double)str_size/(double)buf_size))*100.0);
+
+	memset(task_map, -1, sizeof(*task_map) * nsptr->ntasks);
+
+	/* parse task_map */
+	node_ptr = strtok_r(task_str, d2, &node_end_str);
+	node_id = 0;
+	while (node_ptr != NULL) {
+		//printf("%s\n", node_ptr);
+		char *tmp = strdup(node_ptr), *task_end_ptr = NULL;
+		task_ptr = strtok_r(tmp, d1, &task_end_ptr);
+		while (task_ptr != NULL) {
+			task_id = atoi(task_ptr);
+			task_map[task_id] = node_id;
+			task_ptr = strtok_r(NULL, d1, &task_end_ptr);
+		}
+		node_id++;
+		node_ptr = strtok_r(NULL, d2, &node_end_str);
+	}
+
+	/* verify task_map */
+	for (i = 0; i < nsptr->ntasks; i++) {
+		if (task_map[i] < 0) {
+			ret = -2;
+			goto exit;
+		}
+		//printf("%d %d\n", task_map[i], nsptr->task_map[i]);
+		if (task_map[i] != nsptr->task_map[i]) {
+			ret = -3;
+			goto exit;
+		}
+	}
+
+exit:
+	xfree(task_map);
+	return ret;
+}
+
+void print_help(char *name) {
+	printf("Use:\n\t%s nodes ppn [core|node|rand] <optional:old>\n", name);
+}
 
 int main(int argc, char **argv)
 {
 	pmixp_namespace_t *nsptr = xmalloc(sizeof(nsptr));
-	int mapping = 2;
-	int i, j;
-	int ppn = 40;
+	int mapping;
+	int i, j, rc;
+	int ppn;
 	int use_old = 0;
 	if( argc < 2 ){
 		printf("Need node count!\n");
 		return 0;
 	}
+	if (argc < 4) {
+		print_help(argv[0]);
+		return 0;
+	}
 	nsptr->nnodes = atoi(argv[1]);
-	if( argc > 2 ) {
+	ppn = atoi(argv[2]);
+	if (0 == strcmp("core", argv[3])){
+		mapping = 1;
+	} else if (0 == strcmp("node", argv[3])){
+		mapping = 2;
+	} else if (0 == strcmp("rand", argv[3])){
+		mapping = 3;
+	} else {
+		print_help(argv[0]);
+	}
+
+	if( argc > 4 ) {
 		use_old = 1;
 	}
+
 	nsptr->ntasks = nsptr->nnodes * ppn;
 	nsptr->task_cnts = xmalloc(sizeof(int) * nsptr->nnodes);
 	nsptr->task_map = xmalloc(sizeof(*nsptr->task_map) * nsptr->ntasks);
@@ -230,6 +309,37 @@ int main(int argc, char **argv)
 			nsptr->task_map[i] = node_id;
 			node_id = (node_id + 1) % nsptr->nnodes;
 		}
+	} else if (mapping == 3 /* random */) {
+		int task_id = 0;
+		uint32_t *pool = xmalloc(sizeof(*nsptr->task_map) * nsptr->ntasks);
+		/* pool for rand task selection, used task marked as zero */
+		memset(pool, 1, sizeof(*nsptr->task_map) * nsptr->ntasks);
+		/* init rand */
+		struct timeval time;
+		gettimeofday(&time,NULL);
+		srand((time.tv_sec * 1000) + (time.tv_usec / 1000));
+		for(i=0; i<nsptr->nnodes; i++) {
+			for(j=0; j<ppn; j++) {
+				while (1) {
+					task_id = rand() % nsptr->ntasks;
+					if (pool[task_id] != 0) {
+						pool[task_id] = 0;
+						break;
+					} else if (pool[task_id] == 0) {
+						task_id++;
+						while (pool[task_id] == 0) {
+							task_id++;
+							if (task_id >= nsptr->ntasks) {
+								task_id = 0;
+							}
+						}
+						pool[task_id] = 0;
+						break;
+					}
+				}
+				nsptr->task_map[task_id] = i;
+			}
+		}
 	}
 
 	char *output = NULL;
@@ -238,6 +348,11 @@ int main(int argc, char **argv)
 	} else {
 		output = _build_procmap(nsptr);
 	}
-//	printf("output = %s\n", output);
+
+	if (0 != (rc = task_map_verify(nsptr, output))) {
+		printf("task_map verify error %d\n", rc);
+	}
+
+	//printf("output = %s\n", output);
 	xfree(output);
 }
