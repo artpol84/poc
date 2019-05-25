@@ -1,4 +1,15 @@
 #!/bin/bash
+#
+# Copyright (C) 2019      Mellanox Technologies, Inc.
+#                         All rights reserved.
+#                         Written by Artem Y. Polyakov
+# $COPYRIGHT$
+#
+# Additional copyrights may follow
+#
+# $HEADER$
+#
+
 
 SCRIPT_PATH=$0
 SCRIPT_DIR=`dirname $0`
@@ -8,62 +19,16 @@ SRCDIR=`pwd`/src
 BUILDIR=`pwd`/build
 LOGNAME="SWIFT_BUILD_SCRIPT.log"
 
-function get_package()
-{
-    URL=$1
-    FNAME=`basename $URL`
-    if [ -f $FNAME ]; then
-        echo "No need to download $FNAME"
-    else
-        echo "Downloading $FNAME from $URL"
-        wget $URL
-    fi
-}
-
-function download()
-{
-    if [ ! -d ./src ]; then
-        echo "Creating 'src' directory"
-        mkdir -p src
-    else
-        echo "Directory 'src' already exists"
-    fi
-    cd $SRCDIR
-    get_package $PARMETIS_URL
-    get_package $METIS_URL
-    get_package $FFTW_URL
-    get_package $GSL_URL
-    get_package $HDF5_URL
-    cd ../
-}
-
-function unpack()
-{
-    URL=$1
-    FNAME=`basename $URL`
-    if [ ! -f $FNAME ]; then
-        echo "    Need src/$FNAME to proceed: "`pwd`
-        exit 1
-    fi
-    DIRNAME=${FNAME%%.tar.*}
-    if [ ! -d "$DIRNAME" ]; then
-        echo -n "    Unpacking $FNAME ... "
-        tar -xf $FNAME
-        echo "SUCCESS"
-    fi
-
-    if [ ! -d "$DIRNAME" ]; then
-        echo "    FAILED to unpack $FNAME to $DIRNAME"
-        exit 1
-    fi
-}
 
 function check_status()
 {
-    ret="$1"
-    DONT_ERR_EXIT="$2"
+    silent="$1"
+    ret="$2"
+    DONT_ERR_EXIT="$3"
     if [ "$ret" = "0" ]; then
-        echo "SUCCESS"
+        if [ "$silent" = "0" ] ;then
+            echo "SUCCESS"
+        fi
     else
         echo "FAILURE"
         echo "Command line: $CMDLINE"
@@ -82,14 +47,56 @@ function check_status()
 function run_cmd()
 {
     DESCR="$1"
-    CMDLINE="$2"
-    DONT_ERR_EXIT=$3
+    shift
+    if [ "$1" = "DO_NOT_ERR_EXIT" ]; then
+        DONT_ERR_EXIT=$1
+        shift
+    fi
+    CMDLINE="$@"
 
-    echo -n "$DESCR ... "
+    silent=0
+    if [ "$DESCR" != "-" ]; then
+        echo -n "$DESCR ... "
+    else
+        silent=1
+    fi
+
+    # Run the command
     $CMDLINE >$LOGNAME 2>&1
-    check_status "$?" "$DONT_ERR_EXIT"
+    check_status $silent "$?" "$DONT_ERR_EXIT"
     return "$?"
 }
+
+
+function get_package()
+{
+    URL=$1
+    FNAME=`basename $URL`
+    if [ -f $FNAME ]; then
+        echo "No need to download $FNAME"
+    else
+        run_cmd "Downloading $FNAME from $URL" \
+            wget $URL
+    fi
+}
+
+function download()
+{
+    if [ ! -d ./src ]; then
+        run_cmd "Creating 'src' directory" \
+            mkdir -p src
+    else
+        echo "Directory 'src' already exists"
+    fi
+    run_cmd "-" cd $SRCDIR
+    get_package $PARMETIS_URL
+    get_package $METIS_URL
+    get_package $FFTW_URL
+    get_package $GSL_URL
+    get_package $HDF5_URL
+    run_cmd "-" cd ../
+}
+
 
 function package_prep()
 {
@@ -105,17 +112,36 @@ function package_prep()
     unpack $URL
 }
 
+
+function unpack()
+{
+    if [ ! -f $FNAME ]; then
+        echo "    Need src/$FNAME to proceed: "`pwd`
+        exit 1
+    fi
+    DIRNAME=${FNAME%%.tar.*}
+
+    if [ ! -d "$DIRNAME" ]; then
+        run_cmd "    Unpacking $FNAME" tar -xf $FNAME
+    fi
+
+    if [ ! -d "$DIRNAME" ]; then
+        echo "    FAILED to unpack $FNAME to $DIRNAME"
+        exit 1
+    fi
+}
+
 function build_metis_int()
 {
     package_prep "$1" "$2"
-    cd $DIRNAME
+    run_cmd "-" cd $DIRNAME
     is_configured=`ls ./build`
     if [ -z "$is_configured" ]; then
         DESCR="    $PKGNAME required configuration. Configuring"
-        CMDLINE="make config shared=1 prefix=$BUILDIR/"
-        run_cmd "$DESCR" "$CMDLINE" DO_NOT_ERR_EXIT
+        run_cmd "$DESCR" DO_NOT_ERR_EXIT \
+            make config shared=1 prefix=$BUILDIR/
         if [ "$?" != "0" ]; then
-            rm -Rf `pwd`/build/*
+            run_cmd "-" rm -Rf `pwd`/build/*
             exit 1
         fi
     else
@@ -123,7 +149,7 @@ function build_metis_int()
     fi
     run_cmd "    Building $PKGNAME"   "make $PAR_MAKE"
     run_cmd "    Installing $PKGNAME" "make install $PAR_MAKE"
-    cd ..
+    run_cmd "-" cd ..
 }
 
 function build_metis()
@@ -162,11 +188,11 @@ function config_w_automake()
         fi
     fi
         
-    run_cmd "    Configure $PKGNAME" \
-        "./configure --prefix=$BUILDIR/ $PARAMS" \
-        DO_NOT_ERR_EXIT
+    run_cmd "    Configure $PKGNAME" DO_NOT_ERR_EXIT \
+        ./configure --prefix=$BUILDIR/ $PARAMS
+        
     if [ "$?" != "0" ]; then
-        rm config.log
+        run_cmd "-" rm config.log
         exit 1  
     fi
 }
@@ -174,12 +200,12 @@ function config_w_automake()
 
 function build_w_automake()
 {
-    cd $DIRNAME
+    run_cmd "-" cd $DIRNAME
     run_autogen
     config_w_automake "$1"
     run_cmd "    Building $PKGNAME"   "make $PAR_MAKE"
     run_cmd "    Installing $PKGNAME" "make install $PAR_MAKE"
-    cd ..    
+    run_cmd "-" cd ..    
 }
 
 function build_hdf5()
@@ -213,17 +239,17 @@ function build_swift()
         echo "    $PKGNAME already cloned. skip"
     else
         run_cmd "    Clone $PKGNAME" \
-            "git clone $SWIFT_URL"
+            git clone $SWIFT_URL
     fi
-    cd $DIRNAME
+    run_cmd "-" cd $DIRNAME
     run_cmd "    Checkout $PKGNAME/$SWIFT_COMMIT_HASH" \
-        "git checkout $SWIFT_COMMIT_HASH"
-    cd ../
+        git checkout $SWIFT_COMMIT_HASH
+    run_cmd "-" cd ../
     build_w_automake "--with-parmetis=$BUILDIR --with-metis=$BUILDIR --with-fftw=$BUILDIR --with-hdf5=$BUILDIR/bin/h5cc --with-gsl=$BUILDIR --with-tbbmalloc"
 }
 
 download
-cd $SRCDIR
+run_cmd "-" cd $SRCDIR
 build_metis
 build_parmetis
 build_hdf5
@@ -235,4 +261,4 @@ build_swift
 #    unpack $FFTW_URL
 #   unpack $GSL_URL
 #    unpack $HDF5_URL
-cd ..
+run_cmd "-" cd ..
