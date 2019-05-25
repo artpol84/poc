@@ -17,7 +17,7 @@ SCRIPT_DIR=`dirname $0`
 
 SRCDIR=`pwd`/src
 BUILDIR=`pwd`/build
-LOGNAME="SWIFT_BUILD_SCRIPT.log"
+LOGNAME="/tmp/SWIFT_BUILD_SCRIPT-$$.log"
 
 
 function check_status()
@@ -249,16 +249,15 @@ function build_swift()
 }
 
 download
+
 run_cmd "-" cd $SRCDIR
+
 build_metis
 build_parmetis
 build_hdf5
 build_gsl
 build_fftw
 build_swift
-#    unpack $PARMETIS_URL
-#    unpack $METIS_URL
-#    unpack $FFTW_URL
-#   unpack $GSL_URL
-#    unpack $HDF5_URL
+
 run_cmd "-" cd ..
+run_cmd "-" rm -f $LOGNAME
