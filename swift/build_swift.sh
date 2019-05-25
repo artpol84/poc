@@ -219,7 +219,7 @@ function build_swift()
     run_cmd "    Checkout $PKGNAME/$SWIFT_COMMIT_HASH" \
         "git checkout $SWIFT_COMMIT_HASH"
     cd ../
-    build_w_automake "--with-parmetis=$BUILDIR --with-metis=$BUILDIR --with-fftw=$BUILDIR --with-hdf5=$BUILDIR/bin/h5cc --with-gsl=$BUILDIR"
+    build_w_automake "--with-parmetis=$BUILDIR --with-metis=$BUILDIR --with-fftw=$BUILDIR --with-hdf5=$BUILDIR/bin/h5cc --with-gsl=$BUILDIR --with-tbbmalloc"
 }
 
 download
