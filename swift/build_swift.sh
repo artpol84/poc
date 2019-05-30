@@ -19,6 +19,7 @@ SRCDIR=`pwd`/src
 BUILDIR=`pwd`/build
 LOGNAME="/tmp/SWIFT_BUILD_SCRIPT-$$.log"
 
+export CFLAGS="-g"
 
 function check_status()
 {
@@ -213,7 +214,7 @@ function build_hdf5()
     package_prep "$HDF5_URL" "HDF5" parallel_make 
     export LDFLAGS="-lm"
    
-    build_w_automake ""
+    build_w_automake "--enable-parallel"
 }
 
 function build_gsl()
@@ -244,8 +245,16 @@ function build_swift()
     run_cmd "-" cd $DIRNAME
     run_cmd "    Checkout $PKGNAME/$SWIFT_COMMIT_HASH" \
         git checkout $SWIFT_COMMIT_HASH
+
+    # Few minor changes
+    cat src/engine.c | sed 's/engine_dump_snapshot(.*);//g' > src/engine.c.new
+    run_cmd "Patch engine.c" mv src/engine.c.new src/engine.c
+    cat examples/main.c | sed 's/engine_dump_snapshot(.*);//g' > examples/main.c.new
+    run_cmd "Patch main.c" mv examples/main.c.new examples/main.c
+
+    # Guild using existing infra
     run_cmd "-" cd ../
-    build_w_automake "--with-parmetis=$BUILDIR --with-metis=$BUILDIR --with-fftw=$BUILDIR --with-hdf5=$BUILDIR/bin/h5cc --with-gsl=$BUILDIR --with-tbbmalloc"
+    build_w_automake "--with-parmetis=$BUILDIR --with-metis=$BUILDIR --with-fftw=$BUILDIR --with-hdf5=$BUILDIR/bin/h5pcc --with-gsl=$BUILDIR --with-tbbmalloc"
 }
 
 download
