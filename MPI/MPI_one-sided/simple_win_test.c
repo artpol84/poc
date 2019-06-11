@@ -16,14 +16,15 @@ void win_interact()
     MPI_Win_allocate(2 * sizeof(int), sizeof(int), MPI_INFO_NULL, MPI_COMM_WORLD, &buf, &win);
     buf[0] = 10 + 1 + rank;
     buf[1] = -1;
-    MPI_Barrier(MPI_COMM_WORLD);
+
+    MPI_Win_fence(0, win);
 
     if( rank < 2){
         int target = !rank;
         MPI_Put(&local[1], 1, MPI_INT, target, 1, 1, MPI_INT, win);
         MPI_Get(&local[0], 1, MPI_INT, target, 0, 1, MPI_INT, win);
     }
-    MPI_Win_flush_all(win);
+    MPI_Win_fence(0, win);
 
     if( rank < 2){
         int target = !rank;
@@ -37,13 +38,13 @@ void win_interact()
 //                rank, local[0], local[1], buf[0], buf[1]);
     }
 
-    if(rank == 0){
-        printf("\tDONE\n");
-    }
 
     
     MPI_Win_free(&win);
-    MPI_Barrier(MPI_COMM_WORLD);
+
+    if(rank == 0){
+        printf("\tDONE\n");
+    }
 }
 
 int main(int argc, char **argv)
