@@ -21,10 +21,17 @@ int thread_cnt = 1;
 int iter_cnt = 1000;
 int test_id = -1;
 int want_help = 0;
+int debug = 0;
 
 int mpi_rank = -1;
 int mpi_size = -1;
 int mpi_peer = -1;
+
+#define PDEBUG(tid,fmt,args...)                 \
+    if(debug)                                   \
+        printf("%d:%d:%s: " fmt " \n",          \
+            mpi_rank, tid, __FUNCTION__,        \
+            ## args);                           \
 
 
 void usage(char *progname)
@@ -39,6 +46,7 @@ void usage(char *progname)
     fprintf(stderr, "     \t * p2p-snb-rnb\n");
     fprintf(stderr, "     \t * p2p-sb-rnb\n");
     fprintf(stderr, "     \t * p2p-snb-rb\n");
+    fprintf(stderr, "   -d\tEnable debug\n");
 }
 
 test_type_t get_test_type(char *str)
@@ -61,7 +69,7 @@ void parse_args(int argc, char **argv)
 {
     int c = 0, index = 0;
     opterr = 0;
-    while ((c = getopt(argc, argv, "mt:n:v:")) != -1) {
+    while ((c = getopt(argc, argv, "mt:n:v:d")) != -1) {
         switch (c) {
         case 't':
             thread_cnt = atoi(optarg);
@@ -74,6 +82,9 @@ void parse_args(int argc, char **argv)
             break;
         case 'v':
             type = get_test_type(optarg);
+            break;
+        case 'd':
+            debug = 1;
             break;
         case 'h':
         default:
@@ -121,10 +132,12 @@ void* thr_send_b(void *id_ptr)
 
     pthread_barrier_wait(&barrier);
 
+    PDEBUG(tid,"Start");
     for(i=0; i < iter_cnt; i++) {
         int buf;
         MPI_Send(&buf, 1, MPI_INT, mpi_peer, tid, MPI_COMM_WORLD);
     }
+    PDEBUG(tid,"End");
 }
 
 void* thr_recv_b(void *id_ptr)
@@ -134,10 +147,12 @@ void* thr_recv_b(void *id_ptr)
 
     pthread_barrier_wait(&barrier);
 
+    PDEBUG(tid,"Start");
     for(i=0; i < iter_cnt; i++) {
         int buf;
         MPI_Recv(&buf, 1, MPI_INT, mpi_peer, tid, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
+    PDEBUG(tid,"End");
 }
 
 #define TEST_WIN 50
@@ -150,6 +165,7 @@ void* thr_send_nb(void *id_ptr)
 
     pthread_barrier_wait(&barrier);
 
+    PDEBUG(tid,"Start");
     for(i=0; i < iter_cnt; ) {
         int buf;
         for(j = 0; j < TEST_WIN && i < iter_cnt; j++, i++) {
@@ -157,8 +173,8 @@ void* thr_send_nb(void *id_ptr)
         }
         MPI_Waitall(j, req, MPI_STATUSES_IGNORE);
     }
+    PDEBUG(tid,"End");
 }
-
 
 void* thr_recv_nb(void *id_ptr)
 {
@@ -168,6 +184,7 @@ void* thr_recv_nb(void *id_ptr)
 
     pthread_barrier_wait(&barrier);
 
+    PDEBUG(tid,"Start");
     for(i=0; i < iter_cnt; ) {
         int buf;
         for(j = 0; j < TEST_WIN && i < iter_cnt; j++, i++) {
@@ -175,6 +192,7 @@ void* thr_recv_nb(void *id_ptr)
         }
         MPI_Waitall(j, req, MPI_STATUSES_IGNORE);
     }
+    PDEBUG(tid,"End");
 }
 
 typedef void* (*thread_worker_t)(void *id_ptr);
@@ -258,6 +276,7 @@ int main(int argc, char **argv)
     }
 
     for(i=0; i < thread_cnt; i++){
+        thread_ids[i] = i;
         pthread_create(&thread_objs[i], NULL, workers[i], &thread_ids[i]);
     }
 
