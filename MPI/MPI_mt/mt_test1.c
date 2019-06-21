@@ -7,15 +7,17 @@
 
 
 typedef enum {
+    TEST_NONE,
     TEST_P2P_SB_RB,
     TEST_P2P_SNB_RNB,
     TEST_P2P_SB_RNB,
-    TEST_P2P_SNB_RB
+    TEST_P2P_SNB_RB,
+    TEST_COLL_BARRIER
 } test_type_t;
 
 pthread_barrier_t barrier;
 
-test_type_t type;
+test_type_t type = TEST_P2P_SB_RB;
 int thread_mode = 0;
 int thread_cnt = 1;
 int iter_cnt = 1000;
@@ -26,6 +28,8 @@ int debug = 0;
 int mpi_rank = -1;
 int mpi_size = -1;
 int mpi_peer = -1;
+
+MPI_Comm *coll_comms = NULL;
 
 #define PDEBUG(tid,fmt,args...)                 \
     if(debug)                                   \
@@ -46,6 +50,7 @@ void usage(char *progname)
     fprintf(stderr, "     \t * p2p-snb-rnb\n");
     fprintf(stderr, "     \t * p2p-sb-rnb\n");
     fprintf(stderr, "     \t * p2p-snb-rb\n");
+    fprintf(stderr, "     \t * coll-barrier\n");
     fprintf(stderr, "   -d\tEnable debug\n");
 }
 
@@ -63,6 +68,10 @@ test_type_t get_test_type(char *str)
     if( !strcmp("p2p-sb-rnb", str) ){
         return TEST_P2P_SB_RNB;
     }
+    if( !strcmp("coll-barrier", str) ){
+        return TEST_COLL_BARRIER;
+    }
+    return TEST_NONE;
 }
 
 void parse_args(int argc, char **argv)
@@ -111,6 +120,11 @@ void check_args(int argc, char **argv)
 
     if( (0 > thread_mode) ) {
         sprintf(error_str, "MPI_THREAD_MULTIPLE was requested, but it is not supported by MPI implementation\n");
+        goto eprint;
+    }
+
+    if (TEST_NONE == type) {
+        sprintf(error_str, "Unknown test type request\n");
         goto eprint;
     }
 
@@ -195,6 +209,22 @@ void* thr_recv_nb(void *id_ptr)
     PDEBUG(tid,"End");
 }
 
+void* thr_barrier(void *id_ptr)
+{
+    int tid = *(int*)id_ptr;
+    int i, j;
+    MPI_Request req[TEST_WIN];
+
+    pthread_barrier_wait(&barrier);
+
+    PDEBUG(tid,"Start");
+    for(i=0; i < iter_cnt; i++) {
+        MPI_Barrier(coll_comms[tid]);
+    }
+    PDEBUG(tid,"End");
+}
+
+
 typedef void* (*thread_worker_t)(void *id_ptr);
 
 int main(int argc, char **argv)
@@ -232,7 +262,15 @@ int main(int argc, char **argv)
     thread_ids = calloc(thread_cnt, sizeof(*thread_ids));
     thread_objs = calloc(thread_cnt, sizeof(*thread_objs));
 
-    switch(type) {
+    if (type >= TEST_COLL_BARRIER) {
+        /* If the test is using collectives - need to create communicators */
+        coll_comms = calloc(thread_cnt, sizeof(*coll_comms));
+        for (i=0; i<thread_cnt; i++) {
+            MPI_Comm_dup(MPI_COMM_WORLD, &coll_comms[i]);
+        }
+    }
+
+    switch (type) {
     case TEST_P2P_SB_RB:
         for(i=0; i < thread_cnt; i++){
             if(0 == mpi_rank) {
@@ -273,6 +311,11 @@ int main(int argc, char **argv)
             }
         }
         break;
+    case TEST_COLL_BARRIER:
+        for(i=0; i < thread_cnt; i++){
+            workers[i] = thr_barrier;
+        }
+        break;
     }
 
     for(i=0; i < thread_cnt; i++){
@@ -284,6 +327,17 @@ int main(int argc, char **argv)
         pthread_join(thread_objs[i], NULL);
     }
 
+    free(workers);
+    free(thread_ids);
+    free(thread_objs);
+    if (NULL != coll_comms) {
+        for (i=0; i<thread_cnt; i++) {
+            MPI_Comm_free(&coll_comms[i]);
+        }
+        free(coll_comms);
+    }
+
     MPI_Finalize();
+
 }
 
