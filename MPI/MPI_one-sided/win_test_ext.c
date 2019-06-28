@@ -150,7 +150,6 @@ int main(int argc, char *argv[])
         free(put_data);
         free(get_data);
         free(res);
-#pragma omp barrier
     }
 
     free (wins); wins = NULL;
