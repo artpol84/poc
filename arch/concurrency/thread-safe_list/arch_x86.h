@@ -1,5 +1,5 @@
-#ifndef MY_PPC_H
-#define MY_PPC_H
+#ifndef MY_X86_H
+#define MY_X86_H
 
 #include <stdint.h>
 

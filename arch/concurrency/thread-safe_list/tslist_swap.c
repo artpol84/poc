@@ -99,19 +99,26 @@ void tslist_dequeue(tslist_t *list, tslist_elem_t **_elem)
         return;
     }
 
-    tslist_elem_t *iter;
-    /* requeue the dummy element to make sure that no one is adding currently */
+    /* There is a possibility of a race condition:
+     * elem->next may still be NULL while a new addition has started that
+     * already obtained the pointer to elem.
+     */
     list->head->next = NULL;
-    _append_to(list, list->head, list->head);
-    iter = elem;
-    while(iter->next != list->head) {
-        atomic_isync();
-        if((volatile void*)iter->next) {
-            iter = iter->next;
+    if( CAS(&list->tail, elem, list->head) ){
+        /* Replacement was successful, this means that list->head was placed
+         * as the very first element of the list
+         */
+    } else {
+        /* Replacement failed, this means that other thread is in the process
+         * of adding to the list
+         */
+        /* Wait for the pointer to appear */
+        while(NULL != elem->next) {
+            atomic_isync();
         }
+        /* Hand this element over to the head element */
+        list->head->next = elem->next;
     }
-    /* Terminate the extracted chain */
-    iter->next = NULL;
     *_elem = elem;
     list_extract_last_cnt++;
     printf("!!!\n");

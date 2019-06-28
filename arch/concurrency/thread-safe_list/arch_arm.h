@@ -1,5 +1,5 @@
-#ifndef MY_PPC_H
-#define MY_PPC_H
+#ifndef MY_ARM_H
+#define MY_ARM_H
 
 #include <stdint.h>
 
