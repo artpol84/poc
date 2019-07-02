@@ -11,7 +11,6 @@ int main(int argc, char *argv[])
     int provided, main_thread, claimed,
         ntids, tid, omp_threads, rank, ranks, i, j, k, itter;
 
-    MPI_Win *wins;
     MPI_Comm *comms;
 
     char *env = getenv("OMP_NUM_THREADS");
@@ -64,50 +63,28 @@ int main(int argc, char *argv[])
     MPI_Barrier(MPI_COMM_WORLD);
     sleep(1);
     if (rank == 0 && main_thread == true) {
-        printf ("\n\n!!! Starting multi-threaded Win_create/fence/free test !!!\n\n");
+        printf ("\n\n!!! Starting multi-threaded MPI_Barrier test !!!\n\n");
     }
 
-    wins = malloc(omp_threads * sizeof(MPI_Win));
     comms = malloc(omp_threads * sizeof(MPI_Comm));
 
     for (i=0 ; i < omp_threads; i++) {
         MPI_Comm_dup(MPI_COMM_WORLD, &comms[i]);
     }
 
-    /* Fill data buffer with put and get data for each thread */
-//     for (i=0; i<omp_threads; i++) {
-//         put_data[i] = (rank * 100) + i;
-//         get_data[i] = ((rank * 100) + i) * -1;;
-//     }
-
-#pragma omp parallel private (ntids, tid, i, j, k)
+#pragma omp parallel private (ntids, tid, i)
     {
         ntids = omp_get_num_threads();
         tid = omp_get_thread_num();
 
-        int* put_data = malloc(sizeof(int) * ranks);
-        int* get_data = malloc(sizeof(int) * ranks);
-        int* res      = malloc(sizeof(int) * ranks);
-        for ( i=0; i<ranks; i++) {
-            put_data[i] = -11111111;
-            get_data[i] = -11111111;
-        }
-
         for (i = 0; i < itter; i++) {
-            MPI_Win_create(put_data, ranks * sizeof(int), sizeof(int), MPI_INFO_NULL, comms[tid], &wins[tid]);
-            MPI_Win_free(&wins[tid]);
+            MPI_Barrier(comms[tid]);
         }
-        free(put_data);
-        free(get_data);
-        free(res);
     }
-
-    free (wins); wins = NULL;
 
     for (i=0; i<omp_threads; i++) {
         MPI_Comm_free(&comms[i]);
     }
-    
     free(comms);
 
     MPI_Finalize();

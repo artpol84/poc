@@ -11,7 +11,7 @@ int main(int argc, char *argv[])
     int provided, main_thread, claimed,
         ntids, tid, omp_threads, rank, ranks, i, j, k, itter;
 
-    MPI_Win *wins;
+    MPI_Win **wins;
     MPI_Comm *comms;
 
     char *env = getenv("OMP_NUM_THREADS");
@@ -64,11 +64,14 @@ int main(int argc, char *argv[])
     MPI_Barrier(MPI_COMM_WORLD);
     sleep(1);
     if (rank == 0 && main_thread == true) {
-        printf ("\n\n!!! Starting multi-threaded win_create test !!!\n\n");
-        printf ("Testing %d win_create operations using %d threads.\n", itter, omp_threads);
+        printf ("\n\n!!! Starting multi-threaded Win_create/fence/free test !!!\n\n");
     }
-
-    wins = malloc(omp_threads * sizeof(MPI_Win));
+  
+    
+    wins = malloc(omp_threads * sizeof(*wins));
+    for (i=0; i<omp_threads; i++) {
+        wins[i] = malloc(itter * sizeof(**wins));
+    }
     comms = malloc(omp_threads * sizeof(MPI_Comm));
 
     for (i=0 ; i < omp_threads; i++) {
@@ -95,64 +98,20 @@ int main(int argc, char *argv[])
         }
 
         for (i = 0; i < itter; i++) {
-            MPI_Win_create(put_data, ranks * sizeof(int), sizeof(int), MPI_INFO_NULL, comms[tid], &wins[tid]);
-
-//             for (k = 0; k < ntids; k++) {
-//                 if (tid == k) {
-                    MPI_Win_fence(0, wins[tid]);
-//                     sleep(1);
-//                 }
-//                 #pragma omp barrier
-//             }
-//             #pragma omp barrier
-
-            for (j = 0; j < ranks; j++) {
-                /* Run Put/Get */
-                res[j] = (rank * 1E6) + (j * 1E3) + tid; /* encode rank */
-                printf ("/%d/ res = %09d to: %d at %d\n", i, res[j], j , rank);
-                fflush(stdout);
-                MPI_Put(&res[j], 1, MPI_INT, /*target rank*/ j, /*target offset*/ rank, 1, MPI_INT, wins[tid]);
-            }
-            
-//             MPI_Get(&data[tid], 1, MPI_INT, src, );
-
-            /* Check results */
-//             for (k = 0; k < ntids; k++) {
-//                 if (tid == k) {
-                    MPI_Win_fence(0, wins[tid]);
-//                     sleep(1);
-//                 }
-//                 #pragma omp barrier
-//             }
-//             MPI_Barrier(MPI_COMM_WORLD);
-//             #pragma omp barrier
-
-            for (k = 0; k < ntids; k++) {
-                if (k == tid) {
-                    j = 0;
-                    for (j = 0; j < ranks; j++) {
-                        /* check results */
-                        int expected = (j * 1E6) + (rank*1E3) + tid;
-                        if (put_data[j] != expected) {
-                            printf ("/%d/ put_data[%d]: recvd:%09d, expected:%09d; ", i, j, put_data[j], expected );
-                        }
-                        else {
-                            printf ("/%d/ put_data[%d]: %09d, ", i, j, put_data[j]);
-                        }
-                    }
-                    printf ("\n");
-                    fflush(stdout);
-                }
-                #pragma omp barrier
-            }
-            MPI_Win_free(&wins[tid]);
+            MPI_Win_create(put_data, ranks * sizeof(int), sizeof(int), MPI_INFO_NULL, comms[tid], &wins[tid][i]);
+            //MPI_Win_free(&wins[tid]);
         }
-        free(put_data);
-        free(get_data);
-        free(res);
+//         free(put_data);
+//         free(get_data);
+//         free(res);
     }
 
-    free (wins); wins = NULL;
+    for (i=0; i<omp_threads; i++) {
+        for (j=0; j<itter; j++) {
+            MPI_Win_free(&wins[i][j]);
+        }
+    }
+//     free (wins); wins = NULL;
 
     for (i=0; i<omp_threads; i++) {
         MPI_Comm_free(&comms[i]);
