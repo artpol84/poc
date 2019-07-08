@@ -140,7 +140,7 @@ function build_metis_int()
     if [ -z "$is_configured" ]; then
         DESCR="    $PKGNAME required configuration. Configuring"
         run_cmd "$DESCR" DO_NOT_ERR_EXIT \
-            make config shared=1 prefix=$BUILDIR/
+            make config shared=1 prefix=$BUILDIR/ LDFLAGS="-lm"
         if [ "$?" != "0" ]; then
             run_cmd "-" rm -Rf `pwd`/build/*
             exit 1
@@ -254,7 +254,9 @@ function build_swift()
 
     # Guild using existing infra
     run_cmd "-" cd ../
-    build_w_automake "--with-parmetis=$BUILDIR --with-metis=$BUILDIR --with-fftw=$BUILDIR --with-hdf5=$BUILDIR/bin/h5pcc --with-gsl=$BUILDIR --with-tbbmalloc"
+    build_w_automake "--with-parmetis=$BUILDIR --with-metis=$BUILDIR --with-fftw=$BUILDIR --with-hdf5=$BUILDIR/bin/h5pcc --with-gsl=$BUILDIR --with-tbbmalloc \
+                --with-hydro=anarchy-du --with-kernel=quintic-spline --with-subgrid=EAGLE --disable-hand-vec"
+# CFLAGS=-qopt-zmm-usage=high"
 }
 
 download
