@@ -20,6 +20,8 @@ BUILDIR=`pwd`/build
 LOGNAME="/tmp/SWIFT_BUILD_SCRIPT-$$.log"
 
 export CFLAGS="-g"
+export MPICC=mpiicc
+export CC=icc
 
 function check_status()
 {
@@ -214,7 +216,7 @@ function build_hdf5()
     package_prep "$HDF5_URL" "HDF5" parallel_make 
     export LDFLAGS="-lm"
    
-    build_w_automake "--enable-parallel"
+    build_w_automake "--enable-parallel CC=$MPICC"
 }
 
 function build_gsl()
@@ -255,7 +257,7 @@ function build_swift()
     # Guild using existing infra
     run_cmd "-" cd ../
     build_w_automake "--with-parmetis=$BUILDIR --with-metis=$BUILDIR --with-fftw=$BUILDIR --with-hdf5=$BUILDIR/bin/h5pcc --with-gsl=$BUILDIR --with-tbbmalloc \
-                --with-hydro=anarchy-du --with-kernel=quintic-spline --with-subgrid=EAGLE --disable-hand-vec"
+                --with-hydro=anarchy-du --with-kernel=quintic-spline --with-subgrid=EAGLE --disable-hand-vec CC=$CC MPICC=$MPICC"
 # CFLAGS=-qopt-zmm-usage=high"
 }
 
