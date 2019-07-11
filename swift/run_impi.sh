@@ -12,7 +12,7 @@ get_nnodes()
 {
     local HOSTS=$1
     hcnt=`echo $HOSTS | tr ',' '\n' | wc -l`
-    echo "hcnt=$hcnt"
+    echo "$hcnt"
 }
 
 
@@ -33,8 +33,7 @@ module load intel/ics-18.0.4
 
 export LD_LIBRARY_PATH="/labhome/artemp/SWIFT/2019_07_09_Profiling_IMPI/build/lib/:$LD_LIBRARY_PATH"
 
-#HOSTS=clx-hercules-002,clx-hercules-009,clx-hercules-010,clx-hercules-014
-HOSTS=clx-hercules-002,clx-hercules-009,clx-hercules-010
+HOSTS=clx-hercules-002,clx-hercules-009,clx-hercules-010,clx-hercules-014
 
 np=`get_nproc $HOSTS`
 echo $np
@@ -45,7 +44,7 @@ echo $nodes
 echo "ppn=$ppn"
 
 threads=$(( $np / $ppn ))
-echo "Using $threads threads"
+echo "Running on $nodes nodes, with $ppn PPN, using $threads threads"
 
 if [ $debug ]; then
     mpirun -np $(($nodes * $ppn)) -genv I_MPI_DAT_LIBRARY /usr/lib64/libdat2.so \
