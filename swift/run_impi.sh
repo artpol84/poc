@@ -60,6 +60,7 @@ if [ $debug ]; then
             ./hello_c
 else
     set -x
+    ulimit -s unlimited
     mpirun -np $(($nodes * $ppn)) -genv I_MPI_DAT_LIBRARY /usr/lib64/libdat2.so \
            -DAPL \
             -genv I_MPI_FABRICS shm:dapl \

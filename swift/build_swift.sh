@@ -19,9 +19,23 @@ SRCDIR=`pwd`/src
 BUILDIR=`pwd`/build
 LOGNAME="/tmp/SWIFT_BUILD_SCRIPT-$$.log"
 
+
 export CFLAGS="-g"
-export MPICC=mpiicc
-export CC=icc
+if [ "$1" = "intel" ]; then
+    echo "Using Intel MPI"    
+    module load intel/ics-18.0.4
+    set -x
+    export MPICC=mpiicc
+    export CC=icc
+    set +x
+else
+    echo "Using HPCX"    
+    module load hpcx-gcc-mt
+    set -x
+    MPICC=mpicc
+    CC=gcc
+    set +x
+fi
 
 function check_status()
 {
@@ -259,6 +273,7 @@ function build_swift()
     build_w_automake "--with-parmetis=$BUILDIR --with-metis=$BUILDIR --with-fftw=$BUILDIR --with-hdf5=$BUILDIR/bin/h5pcc --with-gsl=$BUILDIR --with-tbbmalloc \
                 --with-hydro=anarchy-du --with-kernel=quintic-spline --with-subgrid=EAGLE --disable-hand-vec CC=$CC MPICC=$MPICC"
 # CFLAGS=-qopt-zmm-usage=high"
+  
 }
 
 download
