@@ -29,7 +29,8 @@ if [ "$debug" = "debug" ]; then
     shift
 fi
 
-module load intel/impi intel/ics
+module load intel/ics-18.0.4
+
 export LD_LIBRARY_PATH="/labhome/artemp/SWIFT/2019_07_09_Profiling_IMPI/build/lib/:$LD_LIBRARY_PATH"
 
 #HOSTS=clx-hercules-002,clx-hercules-009,clx-hercules-010,clx-hercules-014
