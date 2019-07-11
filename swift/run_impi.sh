@@ -27,6 +27,14 @@ debug=$1
 if [ "$debug" = "debug" ]; then
     echo "DEBUG MODE"
     shift
+else
+    debug=""
+fi
+
+user_threads=""
+if [ -n "$1" ]; then
+    user_threads=$1
+    shift
 fi
 
 module load intel/ics-18.0.4
@@ -44,6 +52,10 @@ echo $nodes
 echo "ppn=$ppn"
 
 threads=$(( $np / $ppn ))
+if [ -n "$user_threads" ]; then
+    threads=$user_threads
+fi
+
 echo "Running on $nodes nodes, with $ppn PPN, using $threads threads"
 
 if [ $debug ]; then
@@ -72,5 +84,5 @@ else
             -genv I_MPI_DEBUG 4 \
             -hosts $HOSTS \
             ../../swift_mpi \
-                     --cosmology --hydro --self-gravity --stars --threads=$threads -n 64 --cooling eagle_25.yml 2>&1 | tee swift_${nodes}x${ppn}x${threads}.log
+                     --cosmology --hydro --self-gravity --stars --threads=$threads -n 1024 --cooling eagle_25.yml 2>&1 | tee swift_${nodes}Nx${ppn}PPNx${threads}THR.log
 fi
