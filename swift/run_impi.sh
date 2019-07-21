@@ -16,9 +16,6 @@ fi
 
 . $SCRIPT_DIR/run_common.sh
 
-module load intel/ics-18.0.4
-
-
 if [ -z "$SWIFT_INST_DIR" ]; then
     echo "No SWIFT_INST_DIR env found. You may need to check your swift_env.sh file if run is failing"
 else
@@ -33,10 +30,10 @@ if [ ! -f dat.conf ]; then
     echo "No local dat.conf is found. Consider creating one from /etc/dat.conf if your interface is not there"
 fi
 
-np=`get_nproc $HOSTS`
+np=`get_nproc`
 echo $np
 
-nodes=`get_nnodes $HOSTS`
+nodes=`get_nnodes`
 echo $nodes
 
 threads=$(( $np / $ppn ))
@@ -50,7 +47,7 @@ rm -f $OUT_FILE
 
 echo "Running on $nodes nodes, with $ppn PPN, using $threads threads" |& tee -a $OUT_FILE
 
-echo "mpirun -np $(($nodes * $ppn)) -genv I_MPI_DAT_LIBRARY /usr/lib64/libdat2.so \
+cmd="mpirun -np $(($nodes * $ppn)) -genv I_MPI_DAT_LIBRARY /usr/lib64/libdat2.so \
        -DAPL \
         -genv I_MPI_FABRICS shm:dapl \
         -genv I_MPI_DAPL_PROVIDER ofa-v2-mlx5_2-1u \
@@ -60,22 +57,14 @@ echo "mpirun -np $(($nodes * $ppn)) -genv I_MPI_DAT_LIBRARY /usr/lib64/libdat2.s
         -genv I_MPI_DEBUG 4 \
         -hosts $SWIFT_HOSTS \
         ./swift_mpi \
-                 --cosmology --hydro --self-gravity --stars --threads=$threads -n 2048 --cooling $infile 2>&1 |& tee swift_e50_${nodes}Nx${ppn}PPNx${threads}THR.log" \
-        |& tee -a $OUT_FILE
+                 --cosmology --hydro --self-gravity --stars --threads=$threads -n 2048 --cooling $infile" \
+
+echo "$cmd" |& tee -a $OUT_FILE
 
 
 set -x
 ulimit -s unlimited
-mpirun -np $(($nodes * $ppn)) -genv I_MPI_DAT_LIBRARY /usr/lib64/libdat2.so \
-       -DAPL \
-        -genv I_MPI_FABRICS shm:dapl \
-        -genv I_MPI_DAPL_PROVIDER ofa-v2-mlx5_2-1u \
-        -genv DAT_OVERRIDE ./dat.conf \
-        -genv I_MPI_PIN on \
-        -genv I_MPI_PERHOST $ppn \
-        -genv I_MPI_DEBUG 4 \
-        -hosts $SWIFT_HOSTS \
-        ./swift_mpi \
-                 --cosmology --hydro --self-gravity --stars --threads=$threads -n 2048 --cooling $infile 2>&1 |& tee -a $OUT_FILE
+
+$cmd |& tee -a $OUT_FILE
 
 rm -Rf restart 
