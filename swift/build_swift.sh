@@ -18,7 +18,7 @@ if [ -f "swift_env.sh" ]; then
     . swift_env.sh
 else
     # Use the default env file
-    . $SCRIPT_DIR/env.sh
+    . $SCRIPT_DIR/swift_env.sh
 fi
 
 SRCDIR=`pwd`/src
