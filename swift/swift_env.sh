@@ -26,6 +26,8 @@ SWIFT_COMMIT_HASH=
 
 COMPILER=gnu		# gcc or intel
 MPI=hpcx		# hpcx, impi or custom
+MPI_APPEND=""
+
 
 if [ "$COMPILER" = "intel" ]; then
     echo "Using Intel Compiler"    
