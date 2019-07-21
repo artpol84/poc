@@ -10,32 +10,23 @@
 # $HEADER$
 #
 
-
 SCRIPT_PATH=$0
 SCRIPT_DIR=`dirname $0`
-. $SCRIPT_DIR/env.sh
+
+if [ -f "swift_env.sh" ]; then
+    # If user defined a local env - use it
+    . swift_env.sh
+else
+    # Use the default env file
+    . $SCRIPT_DIR/env.sh
+fi
 
 SRCDIR=`pwd`/src
 BUILDIR=`pwd`/build
 LOGNAME="/tmp/SWIFT_BUILD_SCRIPT-$$.log"
 
 
-export CFLAGS="-g"
-if [ "$1" = "intel" ]; then
-    echo "Using Intel MPI"    
-    module load intel/ics-18.0.4
-    set -x
-    export MPICC=mpiicc
-    export CC=icc
-    set +x
-else
-    echo "Using HPCX"    
-    module load hpcx-gcc-mt
-    set -x
-    MPICC=mpicc
-    CC=gcc
-    set +x
-fi
+export CFLAGS="-g -O3"
 
 function check_status()
 {
@@ -155,8 +146,12 @@ function build_metis_int()
     is_configured=`ls ./build`
     if [ -z "$is_configured" ]; then
         DESCR="    $PKGNAME required configuration. Configuring"
+        local conf_append=""
+        if [ "$CC" = "icc" ]; then
+    	    conf_append="CFLAGS=\"-fPIC\""
+    	fi
         run_cmd "$DESCR" DO_NOT_ERR_EXIT \
-            make config shared=1 prefix=$BUILDIR/ LDFLAGS="-lm"
+            make config shared=1 prefix=$BUILDIR/ LDFLAGS="-lm" $conf_append
         if [ "$?" != "0" ]; then
             run_cmd "-" rm -Rf `pwd`/build/*
             exit 1
