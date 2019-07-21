@@ -54,10 +54,8 @@ elif [ "$MPI" = "hpcx" ]; then
         echo "Using HPCX/gcc"    
         module load hpcx-gcc-mt
     fi
-
-    module load intel/ics-18.0.4
     set -x
-    export MPICC=mpiicc
+    export MPICC=mpicc
     set +x
 else
     echo "Using custom MPI"
