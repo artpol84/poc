@@ -1,51 +1,51 @@
 #!/bin/bash
 
-get_nproc()
-{
-    local HOSTS=$1
-    hname=`scontrol show hostnames $SLURM_JOB_NODELIST | tr ',' '\n' | head -n 1`
-    np=`ssh $hname nproc`
-    echo $np
-}
-
-get_nnodes()
-{
-    local HOSTS=$1
-    hcnt=`scontrol show hostnames $SLURM_JOB_NODELIST | tr ',' '\n' | wc -l`
-    echo "$hcnt"
-}
-
-
-ppn=$1
-if [ -z "$ppn" ]; then
-    echo "Need PPN input parameter!"
-    exit 1
+SCRIPT_PATH=$0
+if [ -L "$SCRIPT_PATH" ]; then
+    SCRIPT_PATH=`readlink $SCRIPT_PATH`
 fi
-shift 
+SCRIPT_DIR=`dirname $SCRIPT_PATH`
 
-debug=$1
-if [ "$debug" = "debug" ]; then
-    echo "DEBUG MODE"
-    shift
+if [ -f "swift_env.sh" ]; then
+    # If user defined a local env - use it
+    . swift_env.sh
+else
+    # Use the default env file
+    . $SCRIPT_DIR/swift_env.sh
 fi
 
-module load hpcx-gcc-mt
+. $SCRIPT_DIR/run_common.sh
 
-export LD_LIBRARY_PATH="/labhome/artemp/SWIFT/2019_07_09_Profiling/build/lib/:$LD_LIBRARY_PATH"
+if [ -z "$SWIFT_INST_DIR" ]; then
+    echo "No SWIFT_INST_DIR env found. You may need to check your swift_env.sh file if run is failing"
+else
+    export LD_LIBRARY_PATH="$SWIFT_INST_DIR/build/lib/:$LD_LIBRARY_PATH"
+fi
 
-np=`get_nproc $HOSTS`
-echo $np
+np=`get_nproc`
+echo "NP=$np"
 
-nodes=`get_nnodes $HOSTS`
-echo $nodes
+nodes=`get_nnodes`
+echo "NODEs=$nodes"
 
 echo "ppn=$ppn"
 
 threads=$(( $np / $ppn ))
-echo "Running on $nodes nodes, with $ppn PPN, using $threads threads"
+if [ -n "$user_threads" ]; then
+    threads=$user_threads
+fi
+
+rm -f $OUT_FILE
+
+echo "Running on $nodes nodes, with $ppn PPN, using $threads threads" |& tee -a $OUT_FILE
 
 set -x
 ulimit -s unlimited
-mpirun -np $(($nodes * $ppn)) --map-by node:PE=$threads \
-     ../../swift_mpi --cosmology --hydro --self-gravity --stars --threads=$threads -n 1024 --cooling eagle_25.yml 2>&1 | tee output.log
+cmd="mpirun -np $(($nodes * $ppn)) --map-by node:PE=$threads -x UCX_NET_DEVICES=mlx5_2:1 -x UCX_TLS=rc_x -x UCX_USE_MT_MUTEX=y -x UCX_RNDV_THRESH=1G -x UCX_ZCOPY_THRESH=1G \
+      ./swift_mpi --cosmology --hydro --self-gravity --stars --threads=$threads -n 2048 --cooling $infile"
+      
+echo $cmd | tee -a $OUT_FILE
 
+$cmd |& tee -a $OUT_FILE
+
+rm -fR ./restart
