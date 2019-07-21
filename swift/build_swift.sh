@@ -147,9 +147,9 @@ function build_metis_int()
     if [ -z "$is_configured" ]; then
         DESCR="    $PKGNAME required configuration. Configuring"
         local conf_append=""
-        if [ "$CC" = "icc" ]; then
-    	    conf_append="CFLAGS=\"-fPIC\""
-    	fi
+#        if [ "$CC" = "icc" ]; then
+#    	    conf_append="CFLAGS=\"-fPIC\""
+#    	fi
         run_cmd "$DESCR" DO_NOT_ERR_EXIT \
             make config shared=1 prefix=$BUILDIR/ LDFLAGS="-lm" $conf_append
         if [ "$?" != "0" ]; then
