@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include "lib.h"
+
 #define GET_TS() ({                         \
     struct timespec ts;                     \
     double ret = 0;                         \
@@ -25,7 +27,8 @@ void do_bind(int idx)
     CPU_ZERO(&set);
     CPU_SET(idx, &set);
     if( pthread_setaffinity_np(pthread_self(), sizeof(set), &set) ){
-        abort();
+        printf("FAIL to bind the thread!\n");
+        exit(1);
     }
 }
 
@@ -100,7 +103,7 @@ void *eval_pth_key(void *data)
     results[myidx] = GET_TS() - time;
 }
 
-execute(char *prefix, void *(*func)(void*))
+int execute(char *prefix, void *(*func)(void*))
 {
     int i;
     struct timespec ts = { 0, 10000000 };

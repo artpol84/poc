@@ -19,6 +19,7 @@ typedef struct key_test {
 
 void pth_key_cleanup(void *arg) {
         key_test_t *ptr = (key_test_t *)arg;
+        (void)ptr;
         // printf("cleanup: id = %d\n", ptr->id);
         free(arg);
 }
