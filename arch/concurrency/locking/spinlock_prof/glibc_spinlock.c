@@ -65,16 +65,19 @@ uint64_t spinlock_prof_cnt(pthread_spinlock_t *l)
 uint64_t spinlock_prof_cycles(pthread_spinlock_t *l)
 {
     uint64_t ts1, ts2, ret = 0, counter = 0;
+    uint64_t ts1e, ts2e;
 //    uint64_t wait_count = 2294967295;
+
+    ts1e = rdtsc();
     asm volatile (
         // Use rdx as a flag, if it is 0 - timestamp wasn't taken
         "    xor %%r10, %%r10\n"
         "    lock decl (%[lock])\n"
         "    je slk_exit_%=\n"
         // Get the spin start timestamp
-        "    rdtscp\n"
+        "    rdtsc\n"
         "    shl $32, %%rdx\n"
-        "    or %%rdx, %%rax\n"
+        "    or %%rax, %%rdx\n"
         "    mov %%rdx, %%r10\n"
         "    xor %%rax, %%rax\n"
         "    jmp slk_sleep_%=\n"
@@ -93,15 +96,18 @@ uint64_t spinlock_prof_cycles(pthread_spinlock_t *l)
         "    mov %%rax, (%[counter])\n"
         "    xor %%rdx, %%rdx\n"
         "    xor %%rax, %%rax\n"
-        "    rdtscp\n"
+        "    rdtsc\n"
         "    shl $32, %%rdx\n"
-        "    or %%rdx, %%rax\n"
+        "    or %%rax, %%rdx\n"
         "    mov %%rdx, (%[ts2])\n"
         "    mov %%r10, (%[ts1])\n"
         :
         : [lock] "r" (l), [ts1] "r" (&ts1), [ts2] "r" (&ts2), [counter] "r" (&counter)
         : "memory", "rax", "rdx", "r10", "rcx");
+    ts2e = rdtsc();
+
     printf("ts1 = %lu, ts2 = %lu, counter = %lu\n", ts1, ts2, counter);
+    printf("ts1e = %lu, ts2e = %lu, diff=%lu\n", ts1e, ts2e, ts2e - ts1e);
     if (ts1 != 0) {
         ret = ts2 - ts1;
     }
