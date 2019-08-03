@@ -64,9 +64,8 @@ uint64_t spinlock_prof_cnt(pthread_spinlock_t *l)
 
 uint64_t spinlock_prof_cycles(pthread_spinlock_t *l)
 {
-    uint64_t ts1, ts2, ret = 0, counter = 0;
+    uint64_t ts1, ts2, ret = 0, cntr = 0;
     uint64_t ts1e, ts2e;
-//    uint64_t wait_count = 2294967295;
 
     ts1e = rdtsc();
     asm volatile (
@@ -93,7 +92,7 @@ uint64_t spinlock_prof_cycles(pthread_spinlock_t *l)
         "    jmp    slk_sleep_%=\n"
         "slk_exit_%=:\n"
         // Get the spin stop timestamp
-        "    mov %%rax, (%[counter])\n"
+        "    mov %%rax, (%[cntr])\n"
         "    xor %%rdx, %%rdx\n"
         "    xor %%rax, %%rax\n"
         "    rdtsc\n"
@@ -102,11 +101,11 @@ uint64_t spinlock_prof_cycles(pthread_spinlock_t *l)
         "    mov %%rdx, (%[ts2])\n"
         "    mov %%r10, (%[ts1])\n"
         :
-        : [lock] "r" (l), [ts1] "r" (&ts1), [ts2] "r" (&ts2), [counter] "r" (&counter)
+        : [lock] "r" (l), [ts1] "r" (&ts1), [ts2] "r" (&ts2), [cntr] "r" (&cntr)
         : "memory", "rax", "rdx", "r10", "rcx");
     ts2e = rdtsc();
 
-    printf("ts1 = %lu, ts2 = %lu, counter = %lu\n", ts1, ts2, counter);
+    printf("ts1 = %lu, ts2 = %lu, cntr = %lu\n", ts1, ts2, cntr);
     printf("ts1e = %lu, ts2e = %lu, diff=%lu\n", ts1e, ts2e, ts2e - ts1e);
     if (ts1 != 0) {
         ret = ts2 - ts1;
