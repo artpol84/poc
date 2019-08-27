@@ -519,6 +519,7 @@ int run_multi_window_test(void)
         unsigned long *get_buffer = malloc(get_mem_size);
 
         for (i = 0; i < iter; i++) {
+            MPI_Barrier(comms[tid]);
 
             MPI_Win_create(put_data, ranks * el_count * sizeof(unsigned long), sizeof(unsigned long), MPI_INFO_NULL, comms[tid], &wins[tid][i]);
         
@@ -528,6 +529,7 @@ int run_multi_window_test(void)
                 memset(put_data, 0xff, mem_size);
                 memset(put_buffer, 0xff, mem_size);
                 memset(get_buffer, 0xff, get_mem_size);
+                MPI_Win_fence(0, wins[tid][i]);
 
                 /* Put data */
                 int offset;
@@ -563,7 +565,6 @@ int run_multi_window_test(void)
                     
                 /* Synchronize puts */
                 MPI_Win_fence(0, wins[tid][i]);
-#pragma omp barrier
 
                 /* Check Put data */
 #if 0    
@@ -604,7 +605,6 @@ int run_multi_window_test(void)
                 
                 /* Synchronize gets */
                 MPI_Win_fence(0, wins[tid][i]);
-#pragma omp barrier
 
                 /* Check Get data */
 #if 0
