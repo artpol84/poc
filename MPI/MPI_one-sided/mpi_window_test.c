@@ -62,6 +62,7 @@ enum win_modes win_mode = SINGLE_WIN;
 
 unsigned iter = 1;
 unsigned datacheck = 1;
+unsigned win_free = 1;
 
 enum arg_type {
     ARG_NTHREADS,
@@ -73,6 +74,7 @@ enum arg_type {
     ARG_GET,
     ARG_RGET,
     ARG_WIN_MODE,
+    ARG_WIN_FREE,
     ARG_ITERATIONS,
     ARG_HELP,
     ARG_UNDEF,
@@ -124,6 +126,9 @@ enum arg_type get_arg_type (char *arg) {
     }
     else if (strcmp(arg, "-win_mode") == 0) {
         ret = ARG_WIN_MODE;
+    }
+    else if (strcmp(arg, "-win_free") == 0) {
+        ret = ARG_WIN_FREE;
     }
     else if (strcmp(arg, "-iter") == 0) {
         ret = ARG_ITERATIONS;
@@ -180,6 +185,7 @@ void print_accepted_args(char* arg1, char* arg2)
            "-datacheck <int> (0,1)\n"
            "-put, -rput, -get, -rget\n"
            "-win_mode <\"single\", \"multi\">\n"
+           "-win_free <int> (0,1)\n"
            "-iter <int>\n");
 }
 
@@ -245,6 +251,17 @@ int process_args(int argc, char *argv[])
                     return PARAM_ERROR;
                 }
                 break;
+            case ARG_WIN_FREE:
+                i++;
+                if (argv[i] != NULL) {
+                    win_free = atoi(argv[i]);
+                    break;
+                }
+                else {
+                    print_accepted_args(arg, argv[i]);
+                    return PARAM_ERROR;
+                }
+                break;
             case ARG_ITERATIONS:
                 i++;
                 if (argv[i] == NULL || atoi(argv[i]) < 1) {
@@ -269,10 +286,12 @@ void print_args(int f)
     if (f) {
         printf ("sync_mode = %s; threads = %d; "
                 "el_count = %d, put_op = %s, get_op = %s, "
-                "iter = %d, win_mode = %s\n",
+                "iter = %d, win_mode = %s, "
+                "datacheck = %d, win_free = %d\n",
                 sync_modes_str[sync], omp_threads, el_count,
                 put_get_mode_str[putr], put_get_mode_str[getr],
-                iter, win_modes_str[win_mode]);
+                iter, win_modes_str[win_mode],
+                datacheck, win_free);
     }
 
     return;
@@ -304,7 +323,7 @@ int run_single_window_test(void)
     // main thread destroys win
 
     for (i = 0; i < iter; i++) {
-
+        MPI_Barrier(comm);
         MPI_Win_create (put_data, mem_size,
                 sizeof(unsigned long int),
                 MPI_INFO_NULL, comm, &wins[i]);
@@ -313,9 +332,10 @@ int run_single_window_test(void)
 
         /* Clear data */
         if (datacheck) {
-                memset(put_data, 0xf, mem_size);
-                memset(put_buffer, 0xf, mem_size);
-                memset(get_buffer, 0xf, get_mem_size);
+                memset(put_data, 0xff, mem_size);
+                memset(put_buffer, 0xff, mem_size);
+                memset(get_buffer, 0xff, get_mem_size);
+                MPI_Win_fence(0, wins[i]);
 
 #pragma omp parallel private (ntids, tid, dst, ii, jj, kk)
             {
@@ -355,8 +375,9 @@ int run_single_window_test(void)
                 }
                     
                 /* Synchronize puts */
+#pragma omp barrier
+                if (tid == 0)
                 MPI_Win_fence(0, wins[i]);
-
 #pragma omp barrier
 
                 /* Check Put data */
@@ -396,8 +417,10 @@ int run_single_window_test(void)
                             wins[i]);
                 }
                 
-                /* Synchronize gets */
-                MPI_Win_fence(0, wins[i]);
+               /* Synchronize gets */
+#pragma omp barrier
+                if (tid == 0)
+                    MPI_Win_fence(0, wins[i]);
 #pragma omp barrier
 
                 /* Check Get data */
@@ -442,7 +465,15 @@ int run_single_window_test(void)
             return err;
         }
 
-        MPI_Win_free(&wins[i]);
+        if (win_free) {
+            MPI_Win_free(&wins[i]);
+        }
+    }
+
+    if (!win_free) {
+        for (i = 0; i < iter; i++) {
+            MPI_Win_free(&wins[i]);
+        }
     }
 
     MPI_Barrier(comm);
@@ -494,9 +525,9 @@ int run_multi_window_test(void)
             MPI_Win_fence(0, wins[tid][i]);
             
             if (datacheck) {
-                memset(put_data, 0xf, mem_size);
-                memset(put_buffer, 0xf, mem_size);
-                memset(get_buffer, 0xf, get_mem_size);
+                memset(put_data, 0xff, mem_size);
+                memset(put_buffer, 0xff, mem_size);
+                memset(get_buffer, 0xff, get_mem_size);
 
                 /* Put data */
                 int offset;
@@ -532,7 +563,6 @@ int run_multi_window_test(void)
                     
                 /* Synchronize puts */
                 MPI_Win_fence(0, wins[tid][i]);
-
 #pragma omp barrier
 
                 /* Check Put data */
@@ -607,14 +637,21 @@ int run_multi_window_test(void)
                     }
                 }
             }
+            
+            if (win_free) {
+                MPI_Win_free(&wins[tid][i]);
+            }
+
         }
 
         free(put_data);
         free(put_buffer);
         free(get_buffer);
 
-        for (j = 0; j < iter; j++) {
-            MPI_Win_free(&wins[tid][j]);
+        if (!win_free) {
+            for (j = 0; j < iter; j++) {
+                MPI_Win_free(&wins[tid][j]);
+            }
         }
     }
 
@@ -712,15 +749,15 @@ int main(int argc, char *argv[])
         }
     }
        
-    
-    MPI_Barrier(MPI_COMM_WORLD);
-
     MPI_Finalize();
 
 EXIT:
 
     if (errs > 0) {
-        printf ("Errs = %d\n", errs); fflush(stdout); 
+        printf ("Failed! Errs = %d\n", errs); fflush(stdout); 
+    }
+    else if (rank == 0) {
+        printf ("Success!\n");
     }
 
     return errs;
