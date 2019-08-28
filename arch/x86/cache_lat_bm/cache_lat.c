@@ -261,7 +261,7 @@ double measure_level_lat(int level)
     int i;
     uint64_t time = 0;
     int cls = cache_line_size();
-    int buf_size = cache_sizes[level] / STRIDE;
+    int buf_size = (cache_sizes[level] / STRIDE) * 5 / 6;
     buf_elem_t *buf = memalign(64, cache_sizes[level]);
     double best;
 
@@ -272,7 +272,7 @@ double measure_level_lat(int level)
 
     /* Measure */
     best = perform_iter(buf, buf_size);
-    for(i=0; i<1000; i++){
+    for(i=0; i<100000; i++){
         time = perform_iter(buf, buf_size);
         best = ucs_min(best, time );
     }
