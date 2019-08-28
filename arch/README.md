@@ -9,4 +9,6 @@
   * http://www.cs.tau.ac.il/~mad/publications/asplos2014-ffwsq.pdf
 * Write Combine
   * http://download.intel.com/design/PentiumII/applnots/24442201.pdf
+* Cache latencies
+  * LMbench http://www.bitmover.com/lmbench/
   
