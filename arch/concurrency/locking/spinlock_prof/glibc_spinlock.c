@@ -10,7 +10,7 @@
 #include <string.h>
 #include <stdint.h>
 
-inline uint64_t rdtsc() {
+uint64_t rdtsc() {
     uint64_t ts;
     asm volatile ( 
         "rdtsc\n\t"    // Returns the time in EDX:EAX.
@@ -71,6 +71,7 @@ uint64_t spinlock_prof_cycles(pthread_spinlock_t *l)
     asm volatile (
         // Use rdx as a flag, if it is 0 - timestamp wasn't taken
         "    xor %%r10, %%r10\n"
+        "    xor %%rax, %%rax\n"
         "    lock decl (%[lock])\n"
         "    je slk_exit_%=\n"
         // Get the spin start timestamp
@@ -126,7 +127,8 @@ static void lock_destroy()
 
 static void lock_lock(int id)
 {
-    pthread_spin_lock(&lock);
+    printf("Wait cycles = %lu\n",
+        spinlock_prof_cycles(&lock));
 }
 
 static void lock_lock1(int id)

@@ -43,5 +43,5 @@ while (i <= max_stores):
     os.system('python ' + gen_script + ' store_tmpl.c test.c ' + str(i) + ' ' + str(noops) + ' ' + str(noops_wait) + ' ' + remain)
     os.system('gcc -O3 -o test -mavx test.c')
     os.system('./test')
-    os.system('rm test*')
+#    os.system('rm test*')
     i += 1

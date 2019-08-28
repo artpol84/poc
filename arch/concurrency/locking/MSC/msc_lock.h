@@ -88,7 +88,7 @@ static inline void msc_unlock(msc_lock_t *lock, int id)
     // Release the next one in a queue
     compiler_fence();
     my_record.next->locked =0;
-    asm volatile ("sfence" : : : "memory");
+    //asm volatile ("sfence" : : : "memory");
     // lock is released
     my_record.next = NULL;
     my_record.locked = 0;
