@@ -14,7 +14,6 @@
 */
 
 size_t cache_sizes[32];
-char *flush_bufs[32];
 int cache_level_cnt = 0;
 int iters_start = 1000;
 int iters[32];
@@ -103,23 +102,8 @@ void discover_caches()
     return;
 }
 
-void init_cache_flush()
-{
-    int i;
-    for(i = 0; i < cache_level_cnt; i++){
-        flush_bufs[i] = memalign(64, 2 * cache_sizes[i]);
-    }
-}
-
-void flush_cache(int level)
-{
-    int i;
-    for(i=0; i< 2 * cache_sizes[level]; i++){
-        flush_bufs[level][i] = 0x0;
-    }
-}
-
 #define ucs_max(a,b) ((a > b) ? a : b);
+#define ucs_min(a,b) ((a < b) ? a : b);
 
 /* Extracted from the UCX project */
 double ucs_x86_tsc_freq_from_cpu_model()
@@ -233,35 +217,42 @@ uint64_t rdtsc()
 	return a | ((uint64_t)d << 32);
 }
 
-volatile int tmp;
 
-uint64_t perform_iter(int level, char *buf)
+#define STRIDE 512
+
+typedef struct buf_elem_s {
+    struct buf_elem_s *next;
+    char padding[STRIDE - sizeof(void*)];
+} buf_elem_t;
+
+volatile int tmp;
+volatile void* result = 0;
+
+//#define	ONE(b) { printf("b = %p\n", b); b = b->next; }
+#define	ONE(b) { b = b->next; }
+#define	FIVE(b)	ONE(b) ONE(b) ONE(b) ONE(b) ONE(b)
+#define	TEN(b)	FIVE(b) FIVE(b)
+#define	FIFTY(b)	TEN(b) TEN(b) TEN(b) TEN(b) TEN(b)
+#define	HUNDRED(b)	FIFTY(b) FIFTY(b)
+
+
+double perform_iter(buf_elem_t *buf, int size)
 {
     uint64_t start;
-    int i;
-    int cls = cache_line_size();
-    int step = cls * 32;
-    int nprobes = cache_sizes[level] / step;
-    int indexes[nprobes];
 
-    for(i = 0; i < nprobes; i++) {
-        indexes[i] = i;
-    }
-
-    for(i = 0; i < 8 * nprobes; i++) {
-        int idx1 = rand() % nprobes;
-        int idx2 = rand() % nprobes;
-        int tmp = indexes[idx1];
-        indexes[idx1] = indexes[idx2];
-        indexes[idx2] = tmp;
-    }
-
-    flush_cache(level);
     start = rdtsc();
-    for(i = 0; i < nprobes; i++){
-        tmp += buf[indexes[i] * step];
-    }
-    return (rdtsc() - start);
+    HUNDRED(buf);
+    HUNDRED(buf);
+    HUNDRED(buf);
+    HUNDRED(buf);
+    HUNDRED(buf);
+    HUNDRED(buf);
+    HUNDRED(buf);
+    HUNDRED(buf);
+    HUNDRED(buf);
+    HUNDRED(buf);
+    result = buf;
+    return (double)(rdtsc() - start) / 1000;
 }
 
 
@@ -270,21 +261,23 @@ double measure_level_lat(int level)
     int i;
     uint64_t time = 0;
     int cls = cache_line_size();
-    int step = cls * 32;
-    int nprobes = cache_sizes[level] / step;
-    char *buf = memalign(64, cache_sizes[level]);
-    
-    /* warmup */
-    for(i=0; i<10; i++){
-        perform_iter(level, buf);
+    int buf_size = cache_sizes[level] / STRIDE;
+    buf_elem_t *buf = memalign(64, cache_sizes[level]);
+    double best;
+
+    for(i = 1; i < buf_size; i++){
+        buf[i].next = &buf[i - 1];
     }
+    buf[0].next = &buf[buf_size - 1];
 
     /* Measure */
+    best = perform_iter(buf, buf_size);
     for(i=0; i<1000; i++){
-        time += perform_iter(level, buf);
+        time = perform_iter(buf, buf_size);
+        best = ucs_min(best, time );
     }
     
-    return (double)time / 1000 / nprobes;
+    return best;
 }
 
 int main()
@@ -293,12 +286,7 @@ int main()
     // Read cache hirarchy
     discover_caches();
 
-    // allocate cache flush buffers
-    init_cache_flush();
-
-//    for(level = 0; level < cache_level_cnt; level++){
-      level = 1;
-    {
+    for(level = 0; level < cache_level_cnt; level++){
         double lat = measure_level_lat(level);
         printf("Cache Level %d: %lf cycles, %lf ns\n",
                level, lat, lat / ucs_x86_init_tsc_freq() * 1E9 );
