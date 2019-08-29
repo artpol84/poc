@@ -58,6 +58,22 @@ int main()
     printf("iter=5, cycles=%lf\n",  (rdtsc() - start) / 1000.0);
 
     start = rdtsc();
+    THOUSAND( FIVE(delay_1) delay_1);
+    printf("iter=6, cycles=%lf\n",  (rdtsc() - start) / 1000.0);
+
+    start = rdtsc();
+    THOUSAND( delay_1 delay_1 delay_1 delay_1 delay_1 delay_1);
+    printf("iter=6, cycles=%lf\n",  (rdtsc() - start) / 1000.0);
+
+    start = rdtsc();
+    THOUSAND( FIVE(delay_1) delay_1 delay_1);
+    printf("iter=7, cycles=%lf\n",  (rdtsc() - start) / 1000.0);
+
+    start = rdtsc();
+    THOUSAND( FIVE(delay_1) delay_1 delay_1 delay_1);
+    printf("iter=8, cycles=%lf\n",  (rdtsc() - start) / 1000.0);
+
+    start = rdtsc();
     THOUSAND( TEN(delay_1));
     printf("iter=10, cycles=%lf\n",  (rdtsc() - start) / 1000.0);
 
