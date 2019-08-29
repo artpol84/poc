@@ -1,8 +1,11 @@
 
 MPICC ?= mpicc
+
 UTILS = osu_util.c osu_util_mpi.c
 HEADERS = osu_util.h osu_util_mpi.h
 BINARY = osu_mbw_mr
+
+all: $(BINARY)
 
 $(BINARY): $(BINARY).c $(UTILS)
 	$(MPICC) -o $(BINARY) -I. osu_mbw_mr.c $(UTILS)
