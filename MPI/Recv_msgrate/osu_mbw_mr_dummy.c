@@ -118,6 +118,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
+/*
     {
         // Print out the hosts to make sure that ranks are distributed as expected
         int i;
@@ -132,7 +133,7 @@ int main(int argc, char *argv[])
         fflush(stdout);
         MPI_Barrier(MPI_COMM_WORLD);
     }
-
+*/
     if(rank == 0) {
         fprintf(stdout, HEADER);
         print_header(rank, BW);
