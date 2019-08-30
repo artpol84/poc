@@ -19,4 +19,4 @@ $(BINARY)_dummy2: $(BINARY)_dummy2.c $(UTILS)
 	$(MPICC) -o $(BINARY)_dummy2 -g -O0 -I. osu_mbw_mr_dummy2.c $(UTILS) -L. -ldummy2
 
 clean:
-	rm -f $(BINARY) $(BINARY)_dummy $(BINARY)_dummy2
+	rm -f $(BINARY) $(BINARY)_dummy $(BINARY)_dummy2 libdummy2.so
