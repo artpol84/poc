@@ -25,6 +25,16 @@ double calc_bw(int rank, int size, int num_pairs, int window_size, char *s_buf, 
 static int loop_override;
 static int skip_override;
 
+uint64_t rdtsc()
+{
+	unsigned long a, d;
+	asm volatile ("rdtsc" : "=a" (a), "=d" (d));
+	return a | ((uint64_t)d << 32);
+}
+
+int prof_count = 0;
+uint64_t post_cycles = 0, wait_cycles = 0;
+
 int main(int argc, char *argv[])
 {
     char *s_buf, *r_buf;
@@ -199,16 +209,33 @@ double calc_bw(int rank, int size, int writers, int window_size, char *s_buf,
         for(i = 0; i <  options.iterations +  options.skip; i++) {
             if(i ==  options.skip) {
                 MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
+                post_cycles = wait_cycles = 0;
             }
 
+            uint64_t start = rdtsc(), end;
             for(j = 0; j < window_size * writers; j++) {
                 MPI_CHECK(MPI_Irecv(r_buf, size, MPI_CHAR, MPI_ANY_SOURCE, 100, MPI_COMM_WORLD,
                         mbw_request + j));
             }
+            end = rdtsc();
+            post_cycles += end - start;
 
             MPI_CHECK(MPI_Waitall(window_size * writers, mbw_request, mbw_reqstat));
+            wait_cycles += rdtsc() - start;
+
             MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
         }
+
+        double avg_post_cycles = (post_cycles * 1.0) / options.iterations;
+        double avg_one_post_cycles = (avg_post_cycles * 1.0) / (window_size * writers);
+        double avg_wait_cycles = (1.0 * wait_cycles) / options.iterations;
+        printf( "post_cycles = %lu, wait_cycles = %lu\n"
+                "avg_post = %lf, avg one post = %lf\n"
+                "avg_wait = %lf\n",
+                post_cycles, wait_cycles,
+                avg_post_cycles, avg_one_post_cycles,
+                avg_wait_cycles);
+
     }
 
     MPI_CHECK(MPI_Reduce(&t, &sum_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD));
