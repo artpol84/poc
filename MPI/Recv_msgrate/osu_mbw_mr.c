@@ -219,6 +219,7 @@ double calc_bw(int rank, int size, int writers, int window_size, char *s_buf,
             }
             end = rdtsc();
             post_cycles += end - start;
+            start = end;
 
             MPI_CHECK(MPI_Waitall(window_size * writers, mbw_request, mbw_reqstat));
             wait_cycles += rdtsc() - start;
@@ -242,7 +243,7 @@ double calc_bw(int rank, int size, int writers, int window_size, char *s_buf,
 
     if(rank == 0) {
         double tmp = size / 1e6 * writers ;
-        
+
         sum_time /= writers;
         tmp = tmp *  options.iterations * window_size;
         bw = tmp / sum_time;

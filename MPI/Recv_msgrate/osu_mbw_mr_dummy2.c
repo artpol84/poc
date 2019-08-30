@@ -272,6 +272,10 @@ if(0){
 
 //            MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
         }
+
+        t_end = MPI_Wtime();
+        t = t_end - t_start;
+        printf("TIME = %lf\n", t);
         
         double avg_post_cycles = (post_cycles * 1.0) / options.iterations;
         double avg_one_post_cycles = (avg_post_cycles * 1.0) / (window_size * writers);
@@ -283,8 +287,6 @@ if(0){
                 avg_post_cycles, avg_one_post_cycles,
                 avg_wait_cycles);
 
-        t_end = MPI_Wtime();
-        t = t_end - t_start;
 
     }
 

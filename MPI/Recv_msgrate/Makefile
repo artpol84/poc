@@ -16,7 +16,7 @@ $(BINARY)_dummy: $(BINARY)_dummy.c $(UTILS)
 $(BINARY)_dummy2: $(BINARY)_dummy2.c $(UTILS)
 	gcc -c -Wall -Werror -fpic osu_mbw_mr_dummy2_lib.c
 	gcc -shared -o libdummy2.so osu_mbw_mr_dummy2_lib.o
-	$(MPICC) -o $(BINARY)_dummy2 -g -O0 -I. osu_mbw_mr_dummy2.c $(UTILS) -L. -ldummy2
+	$(MPICC) -o $(BINARY)_dummy2 -g -O3 -I. osu_mbw_mr_dummy2.c $(UTILS) -L. -ldummy2
 
 clean:
 	rm -f $(BINARY) $(BINARY)_dummy $(BINARY)_dummy2 libdummy2.so
