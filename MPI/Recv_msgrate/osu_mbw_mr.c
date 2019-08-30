@@ -128,8 +128,13 @@ int main(int argc, char *argv[])
    /* More than one window size */
 
     /* Just one window size */
-    mbw_request = (MPI_Request *)malloc(sizeof(MPI_Request) * options.window_size);
-    mbw_reqstat = (MPI_Status *)malloc(sizeof(MPI_Status) * options.window_size);
+    if (rank < numprocs - 1) {
+        mbw_request = (MPI_Request *)malloc(sizeof(MPI_Request) * options.window_size);
+        mbw_reqstat = (MPI_Status *)malloc(sizeof(MPI_Status) * options.window_size);
+    } else {
+        mbw_request = (MPI_Request *)malloc(sizeof(MPI_Request) * options.window_size * (numprocs - 1));
+        mbw_reqstat = (MPI_Status *)malloc(sizeof(MPI_Status) * options.window_size * (numprocs - 1));
+    }
 
     for(curr_size = options.min_message_size; curr_size <= options.max_message_size; curr_size *= 2) {
         double bw, rate;
@@ -196,12 +201,12 @@ double calc_bw(int rank, int size, int writers, int window_size, char *s_buf,
                 MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
             }
 
-            for(j = 0; j < window_size; j++) {
+            for(j = 0; j < window_size * writers; j++) {
                 MPI_CHECK(MPI_Irecv(r_buf, size, MPI_CHAR, MPI_ANY_SOURCE, 100, MPI_COMM_WORLD,
                         mbw_request + j));
             }
 
-            MPI_CHECK(MPI_Waitall(window_size, mbw_request, mbw_reqstat));
+            MPI_CHECK(MPI_Waitall(window_size * writers, mbw_request, mbw_reqstat));
             MPI_CHECK(MPI_Barrier(MPI_COMM_WORLD));
         }
     }
