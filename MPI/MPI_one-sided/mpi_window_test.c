@@ -407,16 +407,25 @@ int run_single_window_test(int run)
                                     offset + ii, _i);
                         */
                     }
+
+                    if (sync == LOCK_SYNC)
+                        MPI_Win_lock(MPI_LOCK_SHARED, dst, 0, wins[i]);
                    
                     /* Put to rank dst */
                     MPI_Put(&put_buffer[l_offset], el_count, MPI_UNSIGNED_LONG,
                             dst, offset, el_count, MPI_UNSIGNED_LONG,
                             wins[i]);
+                    if (sync == LOCK_SYNC) {
+                        MPI_Win_unlock(dst, wins[i]);
+                    }
                 }
                 /* Synchronize puts */
 #pragma omp barrier
                 if (tid == 0) {
-                    MPI_Win_fence(0, wins[i]);
+
+                    if (sync == FENCE_SYNC)
+                        MPI_Win_fence(0, wins[i]);
+
                     if (profile && run) {
                         _t = rdtsc() - _t;
                         timers[T_PUT][tid] += _t;
@@ -457,15 +466,23 @@ int run_single_window_test(int run)
                 for (dst = 0; dst < ranks; dst++) {
                     l_offset = (tid * ranks * ranks * el_count) + (dst * ranks * el_count);
                     offset = tid * ranks * el_count;
+                    if (sync == LOCK_SYNC)
+                        MPI_Win_lock(MPI_LOCK_SHARED, dst, 0, wins[i]);
+
                     MPI_Get(&get_buffer[l_offset], ranks * el_count, MPI_UNSIGNED_LONG,
                             dst, offset, ranks * el_count, MPI_UNSIGNED_LONG,
                             wins[i]);
+
+                    if (sync == LOCK_SYNC) {
+                        MPI_Win_unlock(dst, wins[i]);
+                    }
                 }
               
                /* Synchronize gets */
 #pragma omp barrier
                 if (tid == 0) {
-                    MPI_Win_fence(0, wins[i]);
+                    if (sync == FENCE_SYNC)
+                        MPI_Win_fence(0, wins[i]);
                     if (profile && run) {
                         _t = rdtsc() - _t;
                         timers[T_GET][tid] += _t;
@@ -516,26 +533,32 @@ int run_single_window_test(int run)
         }
 
         if (win_free) {
-            _t = rdtsc();
+            if (profile && run)
+                _t = rdtsc();
             MPI_Win_free(&wins[i]);
-            _t = rdtsc() - _t;
-            timers[T_WIN_FREE][0] += _t;
+            if (profile && run) {
+                _t = rdtsc() - _t;
+                timers[T_WIN_FREE][0] += _t;
+            }
         }
     }
 
 
     if (!win_free) {
-        _t = rdtsc();
+        if (profile && run)
+            _t = rdtsc();
         for (i = 0; i < iter; i++) {
             MPI_Win_free(&wins[i]);
         }
-        _t = rdtsc() - _t;
-        timers[T_WIN_FREE][0] += _t;
+        if (profile && run) {
+            _t = rdtsc() - _t;
+            timers[T_WIN_FREE][0] += _t;
+        }
     }
     
     MPI_Barrier(comm);
     
-    if (profile && run && 0) {
+    if (profile && run) {
         for (i = 1; i < omp_threads; i++) {
             timers[T_PUT][0] += timers[T_PUT][i];
             timers[T_GET][0] += timers[T_GET][i];
@@ -552,7 +575,7 @@ int run_single_window_test(int run)
     free(put_buffer);
     free(get_buffer);
 
-    return SUCCESS;
+    return err;
 }
 
 int run_multi_window_test(int run)
@@ -636,13 +659,22 @@ int run_multi_window_test(int run)
                     }
                    
                     /* Put to rank dst */
+                    if (sync == LOCK_SYNC)
+                        MPI_Win_lock(MPI_LOCK_SHARED, dst, 0, wins[tid][i]);
+
                     MPI_Put(&put_buffer[l_offset], el_count, MPI_UNSIGNED_LONG,
                             dst, offset, el_count, MPI_UNSIGNED_LONG,
                             wins[tid][i]);
+
+                    if (sync == LOCK_SYNC) {
+                        MPI_Win_unlock(dst, wins[tid][i]);
+                    }
                 }
                     
                 /* Synchronize puts */
-                MPI_Win_fence(0, wins[tid][i]);
+                if (sync == FENCE_SYNC)
+                    MPI_Win_fence(0, wins[tid][i]);
+
                 if (profile && run) {
                     _t = rdtsc() - _t;
                     timers[T_PUT][tid] += _t;
@@ -683,13 +715,21 @@ int run_multi_window_test(int run)
                 /* Do MPI_Get() */
                 for (dst = 0; dst < ranks; dst++) {
                     l_offset = dst * ranks * el_count;
+                    if (sync == LOCK_SYNC)
+                        MPI_Win_lock(MPI_LOCK_SHARED, dst, 0, wins[tid][i]);
+
                     MPI_Get(&get_buffer[l_offset], ranks * el_count, MPI_UNSIGNED_LONG,
                             dst, 0, ranks * el_count, MPI_UNSIGNED_LONG,
                             wins[tid][i]);
+
+                    if (sync == LOCK_SYNC) {
+                        MPI_Win_unlock(dst, wins[tid][i]); 
+                    }
                 }
                 
                 /* Synchronize gets */
-                MPI_Win_fence(0, wins[tid][i]);
+                if (sync == FENCE_SYNC)
+                    MPI_Win_fence(0, wins[tid][i]);
                 
                 if (profile && run) {
                     _t = rdtsc() - _t;
@@ -729,8 +769,10 @@ int run_multi_window_test(int run)
             }
             if (win_free) {
                 if (profile && run)
-                _t = rdtsc();
+                    _t = rdtsc();
+
                 MPI_Win_free(&wins[tid][i]);
+
                 if (profile && run) {
                     _t = rdtsc() - _t;
                     timers[T_WIN_FREE][tid] += _t;
@@ -780,7 +822,7 @@ int run_multi_window_test(int run)
         timers[T_WIN_FENCE][0] = timers[T_WIN_FENCE][0] / omp_threads;
     }
 
-    return SUCCESS;
+    return err;
 }
 
 int main(int argc, char *argv[])
