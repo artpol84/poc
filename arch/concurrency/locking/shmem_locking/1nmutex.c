@@ -1,4 +1,4 @@
-#include "2nmutex.h"
+#include "1nmutex.h"
 #include "lock.h"
 #include <mpi.h>
 #include <stdio.h>
@@ -27,7 +27,7 @@ int shared_rwlock_create(my_lock_t *lock)
     pthread_mutexattr_init(&attr);
     pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
     for(i = 0; i < lock_num; i++) {
-        pthread_mutex_init(&lock->locks[i], &attr);
+        pthread_mutex_init(&lock->locks[i].e.lock, &attr);
     }
     pthread_mutexattr_destroy(&attr);
     init_by_me = 1;
@@ -44,13 +44,13 @@ void shared_rwlock_wlock(my_lock_t *lock)
     int i;
     /* Lock the second lock first */
     for(i=0; i<lock_num; i++) {
-        pthread_mutex_lock(&lock->locks[i]);
+        pthread_mutex_lock(&lock->locks[i].e.lock);
     }
 }
 
 void shared_rwlock_rlock(my_lock_t *lock)
 {
-    pthread_mutex_lock(&lock->locks[lock_idx]);
+    pthread_mutex_lock(&lock->locks[lock_idx].e.lock);
 }
 
 void shared_rwlock_unlock(my_lock_t *lock)
@@ -58,10 +58,10 @@ void shared_rwlock_unlock(my_lock_t *lock)
     int i;
     if( init_by_me ){
         for(i=0; i<lock_num; i++) {
-            pthread_mutex_unlock(&lock->locks[i]);
+            pthread_mutex_unlock(&lock->locks[i].e.lock);
         }
     } else {
-        pthread_mutex_unlock(&lock->locks[lock_idx]);
+        pthread_mutex_unlock(&lock->locks[lock_idx].e.lock);
     }
 }
 
@@ -70,7 +70,7 @@ int shared_rwlock_fin(my_lock_t *lock)
     int i;
     if( init_by_me ){
         for(i = 0; i < lock_num; i++) {
-            pthread_mutex_destroy(&lock->locks[i]);
+            pthread_mutex_destroy(&lock->locks[i].e.lock);
         }
     }
 }   
