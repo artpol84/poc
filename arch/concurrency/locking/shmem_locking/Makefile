@@ -2,7 +2,7 @@ CC = mpicc
 CFLAGS = -O0 -g
 LDFLAGS = -lrt
 
-TARGETS_BASIC = test_flock test_pthread test_pthread_prio test_pthread_mutex test_dummy test_buildin_spin test_buildin_yield test_pthread_nlocks test_2nmutex test_1nmutex
+TARGETS_BASIC = test_flock test_pthread test_pthread_prio test_pthread_mutex test_dummy test_buildin_spin test_buildin_yield test_pthread_nlocks test_2nmutex test_1nmutex test_1nmutex+signal test_1nmutex+1nsignal
 TARGETS_ALL = $(TARGETS_BASIC) test_c11_atomics  test_c11_atomics_spin  test_c11_atomics_yield
 
 basic: $(TARGETS_BASIC)
@@ -21,8 +21,14 @@ test_pthread: test.c pthread.c pthread.h lock.h Makefile
 test_2nmutex: test.c 2nmutex.c 2nmutex.h lock.h Makefile
 	$(CC) -o test_2nmutex $(CFLAGS) $(LDFLAGS) -DMY_PTHREAD_N2=1 test.c 2nmutex.c -lpthread
 
-test_1nmutex: test.c 1nmutex.c 2nmutex.h lock.h Makefile
-	$(CC) -o test_1nmutex $(CFLAGS) $(LDFLAGS) -DMY_PTHREAD_N2=1 test.c 1nmutex.c -lpthread
+test_1nmutex: test.c 1nmutex.c 1nmutex.h lock.h Makefile
+	$(CC) -o test_1nmutex $(CFLAGS) $(LDFLAGS) -DMY_PTHREAD_N1=1 test.c 1nmutex.c -lpthread
+
+test_1nmutex+signal: test.c 1nmutex+signal.c 1nmutex+signal.h lock.h Makefile
+	$(CC) -o test_1nmutex+signal $(CFLAGS) $(LDFLAGS) -DMY_PTHREAD_N1S=1 test.c 1nmutex+signal.c -lpthread
+
+test_1nmutex+1nsignal: test.c 1nmutex+1nsignal.c 1nmutex+1nsignal.h lock.h Makefile
+	$(CC) -o test_1nmutex+1nsignal $(CFLAGS) $(LDFLAGS) -DMY_PTHREAD_NS1=1 test.c 1nmutex+1nsignal.c -lpthread
 
 test_pthread_nlocks: test.c pthread_nlocks.c pthread_nlocks.h lock.h Makefile
 	$(CC) -o test_pthread_nlocks $(CFLAGS) $(LDFLAGS) -DMY_PTHREAD_N=1 -DMY_PTHREAD_PRIO=1 test.c pthread_nlocks.c -lpthread
