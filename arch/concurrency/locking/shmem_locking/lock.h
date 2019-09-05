@@ -18,7 +18,7 @@
 #endif
 
 #if (MY_PTHREAD_N2 == 1)
-#include "pthread_nlocks2.h"
+#include "2nmutex.h"
 #endif
 
 #if (MY_PTHREAD_MUTEX == 1)

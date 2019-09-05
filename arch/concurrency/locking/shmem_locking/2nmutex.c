@@ -1,4 +1,4 @@
-#include "pthread_nlocks2.h"
+#include "2nmutex.h"
 #include "lock.h"
 #include <mpi.h>
 #include <stdio.h>
