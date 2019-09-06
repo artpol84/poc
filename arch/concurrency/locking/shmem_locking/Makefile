@@ -1,5 +1,5 @@
 CC = mpicc
-CFLAGS = -O0 -g
+CFLAGS = -O3 -g
 LDFLAGS = -lrt
 
 TARGETS_BASIC = test_flock test_pthread test_pthread_prio test_pthread_mutex test_dummy test_buildin_spin test_buildin_yield test_pthread_nlocks test_2nmutex test_1nmutex test_1nmutex+signal test_1nmutex+1nsignal
