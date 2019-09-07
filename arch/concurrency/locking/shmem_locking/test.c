@@ -545,10 +545,10 @@ int main(int argc, char **argv)
         }
         printf("%d\t%.0le\t%u\t%.0le/%.0le/%0.le\t%u",
                 size - 1, wronly_lock_ovh, (unsigned)(WRONLY_REPS/wronly_lock_ovh),
-                rdonly_lock_ovh.avg, rdonly_lock_ovh.min, rdonly_lock_ovh.max, (unsigned)(RDONLY_REPS/rdonly_lock_ovh.avg));
+                rdonly_lock_ovh.avg, rdonly_lock_ovh.min, rdonly_lock_ovh.max, (unsigned)((size-1) * RDONLY_REPS/rdonly_lock_ovh.avg));
         if( !nordwr ){
-           printf("\t%.0le\t%.0le\t%u/%u/%u",rdwr_wr_lock_ovh, rdwr_wr_time, 
-                        (unsigned)(rlock_cnt.avg / rdwr_wr_time), (unsigned)(rlock_cnt.min / rdwr_wr_time),
+            printf("\t%.9lf\t%.9lf\t%u (min=%u, max=%u)",rdwr_wr_lock_ovh / WR_REPS, rdwr_wr_time, 
+                        (size-1)*(unsigned)(rlock_cnt.avg / rdwr_wr_time), (unsigned)(rlock_cnt.min / rdwr_wr_time),
                         (unsigned)(rlock_cnt.max / rdwr_wr_time));
         }
         printf("\n");
