@@ -375,7 +375,9 @@ int run_single_window_test(int run)
                 sizeof(unsigned long int),
                 MPI_INFO_NULL, comm, &wins[i]);
 
-        MPI_Win_fence(0, wins[i]);
+        if (sync == FENCE_SYNC)
+            MPI_Win_fence(0, wins[i]);
+
         if (profile && run) {
             _t = rdtsc() - _t;
             timers[T_WIN_CREATE][0] += _t;
@@ -396,18 +398,14 @@ int run_single_window_test(int run)
                 /* Put data */
                 int offset;
                 int l_offset;
-                int _dst;
                
-                //uint64_t t = rdtsc();
-
                 if (profile && run)
                     _t = rdtsc();
 
                 for (dst = 0; dst < ranks; dst++)
                 {
                     offset = (tid * ranks * el_count) + (rank * el_count);
-                    _dst = (lock == MPI_LOCK_EXCLUSIVE) ? ((rank + dst) % ranks) : dst;
-                    l_offset = (tid * ranks * el_count) + (_dst * el_count);
+                    l_offset = (tid * ranks * el_count) + (dst * el_count);
                     
                     /* Prepare buffer */
                     for (ii = 0; ii < el_count; ii++) {
@@ -415,13 +413,13 @@ int run_single_window_test(int run)
                         put_buffer[_i] = 0;
                         setSrcRank(put_buffer[_i], rank);
                         setTid(put_buffer[_i], tid);
-                        setDstRank(put_buffer[_i], _dst);
+                        setDstRank(put_buffer[_i], dst);
                         setEl(put_buffer[_i], ii);
                         if (sync == LOCK_SYNC)
                             setFlag(put_buffer[_i]);
 #if 0
                         printf ("PUT: %d[%d] -> %d[%d]: %lu %lu %lu %lu [%lx]\n",
-                                rank, tid, _dst, tid,
+                                rank, tid, dst, tid,
                                     getSrcRank(put_buffer[_i]),
                                     getTid(put_buffer[_i]),
                                     getDstRank(put_buffer[_i]),
@@ -434,13 +432,13 @@ int run_single_window_test(int run)
                         /* linear ring */
                         for (ii = 0; ii < ntids; ii++) {
                             if (ii == tid) {
-                                MPI_Win_lock(lock, _dst, 0, wins[i]);
+                                MPI_Win_lock(lock, dst, 0, wins[i]);
                             
                                 MPI_Put(&put_buffer[l_offset], el_count, MPI_UNSIGNED_LONG,
-                                        _dst, offset, el_count, MPI_UNSIGNED_LONG,
+                                        dst, offset, el_count, MPI_UNSIGNED_LONG,
                                         wins[i]);
                             
-                                MPI_Win_unlock(_dst, wins[i]);
+                                MPI_Win_unlock(dst, wins[i]);
                                 if (lock == MPI_LOCK_EXCLUSIVE)
                                     MPI_Barrier(comm);
                             }
@@ -449,7 +447,7 @@ int run_single_window_test(int run)
                     }
                     else { /* Fence sync */
                         MPI_Put(&put_buffer[l_offset], el_count, MPI_UNSIGNED_LONG,
-                                _dst, offset, el_count, MPI_UNSIGNED_LONG,
+                                dst, offset, el_count, MPI_UNSIGNED_LONG,
                                 wins[i]);
                     }
                 }
@@ -513,20 +511,19 @@ int run_single_window_test(int run)
                     _t = rdtsc();
 
                 for (dst = 0; dst < ranks; dst++) {
-                    _dst = (lock == MPI_LOCK_EXCLUSIVE) ? ((rank + dst) % ranks) : dst;
-                    l_offset = (tid * ranks * ranks * el_count) + (_dst * ranks * el_count);
+                    l_offset = (tid * ranks * ranks * el_count) + (dst * ranks * el_count);
                     offset = tid * ranks * el_count;
    
                     if (sync == LOCK_SYNC) {
                         for (ii = 0; ii < ntids; ii++) {
                             if (ii == tid) {
-                                MPI_Win_lock(lock, _dst, 0, wins[i]);
+                                MPI_Win_lock(lock, dst, 0, wins[i]);
 
                                 MPI_Get(&get_buffer[l_offset], ranks * el_count, MPI_UNSIGNED_LONG,
-                                        _dst, offset, ranks * el_count, MPI_UNSIGNED_LONG,
+                                        dst, offset, ranks * el_count, MPI_UNSIGNED_LONG,
                                         wins[i]);
                             
-                                MPI_Win_unlock(_dst, wins[i]);
+                                MPI_Win_unlock(dst, wins[i]);
 
                                 if (lock == MPI_LOCK_EXCLUSIVE)
                                     MPI_Barrier(comm);
@@ -537,7 +534,7 @@ int run_single_window_test(int run)
                     else {
                         /* Fence sync */
                         MPI_Get(&get_buffer[l_offset], ranks * el_count, MPI_UNSIGNED_LONG,
-                                _dst, offset, ranks * el_count, MPI_UNSIGNED_LONG,
+                                dst, offset, ranks * el_count, MPI_UNSIGNED_LONG,
                                 wins[i]);
                     }
                 }
@@ -696,7 +693,9 @@ int run_multi_window_test(int run)
                 _t = rdtsc();
             MPI_Win_create(put_data, ranks * el_count * sizeof(unsigned long), sizeof(unsigned long), MPI_INFO_NULL, comms[tid], &wins[tid][i]);
         
-            MPI_Win_fence(0, wins[tid][i]);
+            if (sync == FENCE_SYNC)
+                MPI_Win_fence(0, wins[tid][i]);
+
             if (profile && run) {
                 _t = rdtsc() - _t;
                 timers[T_WIN_CREATE][tid] += _t;
@@ -714,13 +713,11 @@ int run_multi_window_test(int run)
                 /* Put data */
                 int offset;
                 int l_offset;
-                int _dst;
 
                 for (dst = 0; dst < ranks; dst++)
                 {
                     offset = rank * el_count;
-                    _dst = (lock == MPI_LOCK_EXCLUSIVE) ? ((rank + dst) % ranks) : dst;
-                    l_offset = _dst * el_count;
+                    l_offset = dst * el_count;
 
                     /* Prepare buffer */
                     for (ii = 0; ii < el_count; ii++) {
@@ -728,7 +725,7 @@ int run_multi_window_test(int run)
                         put_buffer[_i] = 0;
                         setSrcRank(put_buffer[_i], rank);
                         setTid(put_buffer[_i], tid);
-                        setDstRank(put_buffer[_i], _dst);
+                        setDstRank(put_buffer[_i], dst);
                         setEl(put_buffer[_i], ii);
                         if (sync == LOCK_SYNC) {
                             setFlag(put_buffer[_i]);
@@ -745,14 +742,14 @@ int run_multi_window_test(int run)
                     /* Put to rank dst */
                     if (sync == LOCK_SYNC) {
 
-                        MPI_Win_lock(lock, _dst, 0, wins[tid][i]);
+                        MPI_Win_lock(lock, dst, 0, wins[tid][i]);
 
                         MPI_Put(&put_buffer[l_offset], el_count, MPI_UNSIGNED_LONG,
-                                _dst, offset, el_count, MPI_UNSIGNED_LONG,
+                                dst, offset, el_count, MPI_UNSIGNED_LONG,
                                 wins[tid][i]);
 
 
-                        MPI_Win_unlock(_dst, wins[tid][i]);
+                        MPI_Win_unlock(dst, wins[tid][i]);
                         if (lock == MPI_LOCK_EXCLUSIVE) {
                             MPI_Barrier(comms[tid]);
                         }
@@ -819,24 +816,23 @@ int run_multi_window_test(int run)
 
                 /* Do MPI_Get() */
                 for (dst = 0; dst < ranks; dst++) {
-                    _dst = (lock == MPI_LOCK_EXCLUSIVE) ? ((rank + dst) % ranks) : dst;
-                    l_offset = _dst * ranks * el_count;
+                    l_offset = dst * ranks * el_count;
 
                     if (sync == LOCK_SYNC) {
-                        MPI_Win_lock(lock, _dst, 0, wins[tid][i]);
+                        MPI_Win_lock(lock, dst, 0, wins[tid][i]);
 
                         MPI_Get(&get_buffer[l_offset], ranks * el_count, MPI_UNSIGNED_LONG,
-                                _dst, 0, ranks * el_count, MPI_UNSIGNED_LONG,
+                                dst, 0, ranks * el_count, MPI_UNSIGNED_LONG,
                                 wins[tid][i]);
 
-                        MPI_Win_unlock(_dst, wins[tid][i]); 
+                        MPI_Win_unlock(dst, wins[tid][i]); 
                         if (lock == MPI_LOCK_EXCLUSIVE) {
                             MPI_Barrier(comms[tid]);
                         }
                     }
                     else{
                         MPI_Get(&get_buffer[l_offset], ranks * el_count, MPI_UNSIGNED_LONG,
-                                _dst, 0, ranks * el_count, MPI_UNSIGNED_LONG,
+                                dst, 0, ranks * el_count, MPI_UNSIGNED_LONG,
                                 wins[tid][i]);
                     }
                 }
