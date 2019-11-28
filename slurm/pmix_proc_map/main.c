@@ -4,9 +4,19 @@
 #include <stdint.h>
 #include <string.h>
 #include <time.h>
+#include <stdarg.h>
+#include <assert.h>
 
-#define xmalloc malloc
-#define xfree free
+#include <xmalloc.h>
+
+#include <time.h>
+#define GET_TS ({ \
+    struct timespec ts;                     \
+    double ret;                             \
+    clock_gettime(CLOCK_MONOTONIC, &ts);    \
+    ret = ts.tv_sec + 1E-9 * ts.tv_nsec;    \
+    ret;                                    \
+})
 
 typedef struct {
 	uint32_t nnodes; /* number of nodes in this namespace */
@@ -14,7 +24,6 @@ typedef struct {
 	uint32_t *task_cnts; /* Number of tasks on each node of namespace */
 	uint32_t *task_map; /* i'th task is located on task_map[i] node */
 } pmixp_namespace_t;
-
 
 int pmixp_count_digits_base10(uint32_t val)
 {
@@ -90,7 +99,8 @@ static size_t _proc_map_buffer_size(pmixp_namespace_t *nsptr)
 	}                                                                  \
 }
 
-static char *_build_procmap(pmixp_namespace_t *nsptr)
+
+static char *_build_procmap_opt_custom(pmixp_namespace_t *nsptr)
 {
 	/* 1. Count number of digits in the numtasks */
 	size_t str_size = _proc_map_buffer_size(nsptr);
@@ -142,14 +152,62 @@ err_exit:
 	return NULL;
 }
 
-static char *_build_procmap_old(pmixp_namespace_t *nsptr)
+static char *_build_procmap_w_pos_opt(pmixp_namespace_t *nsptr)
 {
 	/* 1. Count number of digits in the numtasks */
 	size_t str_size = _proc_map_buffer_size(nsptr);
 	ssize_t remain = 0, ret = 0;
 	uint32_t *node2tasks = xmalloc(nsptr->ntasks * sizeof(*node2tasks));
 	uint32_t *cur_task = NULL;
-	char *output = xmalloc(str_size);
+	char *output = NULL;//xmalloc(str_size);
+	char *pos = NULL;
+	char *ptr = NULL;
+	int i, j;
+
+	/* Build a node-to-tasks map that is more convenient to traverse */
+	_build_node2task_map(nsptr, node2tasks);
+
+	ptr = output;
+	remain = str_size;
+	cur_task = node2tasks;
+	for (i = 0; i < nsptr->nnodes; i++) {
+		char *sep = "";
+		/* cur_task is expected to point to the first rank on the node
+		 * and all node ranks are placed sequentially
+		 * So all we need to do is to traverse nsptr->task_cnts[i]
+		 * sequential elements starting from cur_task
+		 */
+		for (j = 0; j < nsptr->task_cnts[i]; j++) {
+			slurm_xstrfmtcatat(&output, &pos, "%s%u",
+				     sep, *(cur_task++));
+			sep = ",";
+		}
+		/* Put the separator if not the last node */
+		if (i < (nsptr->nnodes - 1)) {
+			slurm_xstrfmtcatat(&output, &pos, ";");
+		}
+	}
+	/* Cleanup service structures */
+	xfree(node2tasks);
+	return output;
+err_exit:
+	if (node2tasks) {
+		xfree(node2tasks);
+	}
+	if(output) {
+		xfree(output);
+	}
+	return NULL;
+}
+
+static char *_build_procmap_orig(pmixp_namespace_t *nsptr)
+{
+	/* 1. Count number of digits in the numtasks */
+	size_t str_size = _proc_map_buffer_size(nsptr);
+	ssize_t remain = 0, ret = 0;
+	uint32_t *node2tasks = xmalloc(nsptr->ntasks * sizeof(*node2tasks));
+	uint32_t *cur_task = NULL;
+	char *output = NULL;//xmalloc(str_size);
 	char *ptr = NULL;
 	int i, j;
 
@@ -171,22 +229,75 @@ static char *_build_procmap_old(pmixp_namespace_t *nsptr)
 				if (first) {
 					first = 0;
 				} else {
-					_PMIXP_LOC_STRCAT(ptr, remain, ret,
-							  err_exit, ",")
+					slurm_xstrfmtcat(&output, ",");
+					//_PMIXP_LOC_STRCAT(ptr, remain, ret,
+					//		  err_exit, ",")
 				}
-				_PMIXP_LOC_STRCAT(ptr, remain, ret, err_exit,
-						  "%u", j);
+				slurm_xstrfmtcat(&output, "%u", j);
+				//_PMIXP_LOC_STRCAT(ptr, remain, ret, err_exit,
+				//		  "%u", j);
 			}
 		}
 		/* Put the separator if not the last node */
 		if (i < (nsptr->nnodes - 1)) {
-			_PMIXP_LOC_STRCAT(ptr, remain, ret, err_exit, ";");
+			slurm_xstrfmtcat(&output, ";");
+			//_PMIXP_LOC_STRCAT(ptr, remain, ret, err_exit, ";");
 		}
 	}
 	/* Cleanup service structures */
 	xfree(node2tasks);
 	return output;
 err_exit:
+	if (node2tasks) {
+		xfree(node2tasks);
+	}
+	if(output) {
+		xfree(output);
+	}
+	return NULL;
+}
+
+static char *_build_procmap_w_pos(pmixp_namespace_t *nsptr)
+{
+	/* 1. Count number of digits in the numtasks */
+	size_t str_size = _proc_map_buffer_size(nsptr);
+	ssize_t remain = 0;
+	uint32_t *node2tasks = xmalloc(nsptr->ntasks * sizeof(*node2tasks));
+	uint32_t *cur_task = NULL;
+	char *output = xmalloc(str_size);
+	char *pos = NULL;
+	char *ptr = NULL;
+	int i, j;
+
+	/* Build a node-to-tasks map that is more convenient to traverse */
+	_build_node2task_map(nsptr, node2tasks);
+
+	ptr = output;
+	remain = str_size;
+	cur_task = node2tasks;
+	for (i = 0; i < nsptr->nnodes; i++) {
+		char *sep = "";
+		/* cur_task is expected to point to the first rank on the node
+		* and all node ranks are placed sequentially
+		* So all we need to do is to traverse nsptr->task_cnts[i]
+		* sequential elements starting from cur_task
+		*/
+		for (j = 0; j < nsptr->ntasks; j++) {
+			if( nsptr->task_map[j] == i ){
+				slurm_xstrfmtcatat(&output, &pos, "%s%u",
+					     sep, j);
+				sep = ",";
+			}
+		}
+		/* Put the separator if not the last node */
+		if (i < (nsptr->nnodes - 1)) {
+			slurm_xstrfmtcatat(&output, &pos, ";");
+		}
+	}
+	/* Cleanup service structures */
+	xfree(node2tasks);
+	return output;
+	err_exit:
 	if (node2tasks) {
 		xfree(node2tasks);
 	}
@@ -214,10 +325,11 @@ int task_map_verify(pmixp_namespace_t *nsptr, const char *output)
 		goto exit;
 	}
 
+	/*
 	printf("used size=%lu, allocated size=%lu (diff=%0.2lf%%)\n",
 	       str_size, buf_size,
 	       (1.0-((double)str_size/(double)buf_size))*100.0);
-
+	*/
 	memset(task_map, -1, sizeof(*task_map) * nsptr->ntasks);
 
 	/* parse task_map */
@@ -260,11 +372,14 @@ void print_help(char *name) {
 
 int main(int argc, char **argv)
 {
-	pmixp_namespace_t *nsptr = xmalloc(sizeof(nsptr));
+	double total_ts = GET_TS, ranking_ts;
+	double ts = GET_TS;
+	pmixp_namespace_t *nsptr = xmalloc(sizeof(*nsptr));
 	int mapping;
 	int i, j, rc;
 	int ppn;
 	int use_old = 0;
+	char *mode = "orig";
 	if( argc < 2 ){
 		printf("Need node count!\n");
 		return 0;
@@ -286,8 +401,10 @@ int main(int argc, char **argv)
 	}
 
 	if( argc > 4 ) {
-		use_old = 1;
+		mode = argv[4];
 	}
+
+	ranking_ts = GET_TS;
 
 	nsptr->ntasks = nsptr->nnodes * ppn;
 	nsptr->task_cnts = xmalloc(sizeof(int) * nsptr->nnodes);
@@ -342,16 +459,32 @@ int main(int argc, char **argv)
 		}
 	}
 
+	ranking_ts = GET_TS - ranking_ts;
+
 	char *output = NULL;
-	if( use_old ) {
-		output = _build_procmap_old(nsptr);
-	} else {
-		output = _build_procmap(nsptr);
+
+	ts = GET_TS;
+	if (mode) {
+		if (0 == strcmp("pos", mode)){
+			output = _build_procmap_w_pos(nsptr);
+		} else if (0 == strcmp("pos_opt", mode)) {
+			output = _build_procmap_w_pos_opt(nsptr);
+		} else if (0 == strcmp("opt_custom", mode)) {
+			output = _build_procmap_opt_custom(nsptr);
+		} else if (0 == strcmp("orig", mode)) {
+			output = _build_procmap_orig(nsptr);
+		}
 	}
+
+	fprintf(stderr, "mode \"%s\" build_procmap: %lf ", mode, GET_TS - ts);
+	ts = GET_TS;
 
 	if (0 != (rc = task_map_verify(nsptr, output))) {
 		printf("task_map verify error %d\n", rc);
 	}
+
+	fprintf(stderr, "( total=%lf / ranking=%lf / verify=%lf )\n",
+		GET_TS - total_ts, ranking_ts, GET_TS - ts);
 
 	//printf("output = %s\n", output);
 	xfree(output);
