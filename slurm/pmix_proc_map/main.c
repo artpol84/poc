@@ -159,7 +159,7 @@ static char *_build_procmap_w_pos_opt(pmixp_namespace_t *nsptr)
 	ssize_t remain = 0, ret = 0;
 	uint32_t *node2tasks = xmalloc(nsptr->ntasks * sizeof(*node2tasks));
 	uint32_t *cur_task = NULL;
-	char *output = NULL;//xmalloc(str_size);
+	char *output = xmalloc(str_size);
 	char *pos = NULL;
 	char *ptr = NULL;
 	int i, j;
@@ -204,7 +204,7 @@ static char *_build_procmap_orig(pmixp_namespace_t *nsptr)
 {
 	/* 1. Count number of digits in the numtasks */
 	size_t str_size = _proc_map_buffer_size(nsptr);
-	ssize_t remain = 0, ret = 0;
+	ssize_t remain = 0;
 	uint32_t *node2tasks = xmalloc(nsptr->ntasks * sizeof(*node2tasks));
 	uint32_t *cur_task = NULL;
 	char *output = NULL;//xmalloc(str_size);
