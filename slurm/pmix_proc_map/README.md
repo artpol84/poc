@@ -23,5 +23,6 @@ Here the disadvantages of `xstrfmtcatat` are highlighted
 It is clear from these measurements, that optimization of the order **opt-order** is the main bottleneck of the algorithm.
 * Compared to **opt-order/my-strcat** version, strdup has ~ 40% overhead
 * Compared to **opt-order/my-strcat** version, unneeded memcopy contributes additional 10% overhead.
+
 Result overhead from `xstrfmtcatat` is 50%.
 
