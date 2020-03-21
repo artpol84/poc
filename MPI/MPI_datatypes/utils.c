@@ -147,7 +147,7 @@ int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx, messa
                         i, m->outbuf[i], recv_buf[i]);
                         rc = 1;
             }
-            printf("%c ", recv_buf[i]);
+            printf("%c", recv_buf[i]);
         }
         printf("\n");
     }
