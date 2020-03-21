@@ -7,7 +7,7 @@ function exec_test()
     $cmd
 }
 
-tests="vector index_plain index_regular index_regular_ilv index_ilv_w_block index_2x_ilv index_2x_stride index_mixed1"
+tests="vector index_plain index_regular_s0 index_regular_s2 index_regular_ilv index_ilv_w_block index_2x_ilv index_2x_stride index_mixed1"
 for t in $tests; do
     exec_test $t
 done
