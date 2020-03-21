@@ -72,7 +72,7 @@ void range_fill(range_t *r, char *base_addr, int displs[], int blocklens[], char
 }
 
 
-message_t *message_init(char *base_ptr, message_desc_t *desc, int desc_cnt)
+message_t *message_init(char *base_ptr, int rangeidx, int bufidx, message_desc_t *desc, int desc_cnt)
 {
     int i;
     int blk_offs;
@@ -94,7 +94,7 @@ message_t *message_init(char *base_ptr, message_desc_t *desc, int desc_cnt)
     
     if(base_ptr == NULL){
         /* point to the very first buffer */
-        base_ptr = m->ranges[0]->inbufs[0];
+        base_ptr = m->ranges[rangeidx]->inbufs[bufidx];
     }
     m->base_addr = base_ptr;
 

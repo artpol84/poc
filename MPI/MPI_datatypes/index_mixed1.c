@@ -16,7 +16,7 @@ int main(int argc, char **argv)
     int rank;
     MPI_Request req;
     char sync[1];
-    message_t *m = message_init(NULL, scenario, sizeof(scenario)/sizeof(scenario[0]));
+    message_t *m = message_init(NULL, 0, 0, scenario, sizeof(scenario)/sizeof(scenario[0]));
     
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);

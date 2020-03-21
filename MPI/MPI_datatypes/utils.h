@@ -31,4 +31,4 @@ typedef struct message_s {
 range_t *range_init(int bufcnt, int repcnt, int *payloads, int *strides);
 void range_fill(range_t *r, char *base_addr, int displs[], int blocklens[], char outbuf[]);
 
-message_t *message_init(char *base_ptr, message_desc_t *desc, int desc_cnt);
+message_t *message_init(char *base_ptr, int rangeidx, int bufidx, message_desc_t *desc, int desc_cnt);

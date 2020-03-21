@@ -1,37 +1,50 @@
 #include <stdio.h>
 #include <mpi.h>
+#include "utils.h"
+
+message_desc_t scenario[] = {
+    { 1, 1, {1}, {1} },
+    { 1, 1, {2}, {2} },
+    { 1, 1, {4}, {4} },
+    { 1, 1, {6}, {6} }
+};
+
 
 int main(int argc, char **argv)
 {
     MPI_Datatype type;
     int rank;
     MPI_Request req;
-    char buf1[] = { 'A' }, buf2[] = { 'B', 'B' }, buf3[] = { 'C', 'C', 'C', 'C' },
-                    buf4[] = { 'D', 'd', 'D', 'd','D', 'd' };
-    int blocklens[] = { sizeof(buf1), sizeof(buf2), sizeof(buf3), sizeof(buf4) };
-    int rcv_size = sizeof(buf1) + sizeof(buf2) + sizeof(buf3) + sizeof(buf4);
-    char rcv_buf[rcv_size];
-    int displs[] = {0, buf2 - buf1, buf3 - buf1, buf4 - buf1 };
-    
+    char sync[1];
+    message_t *m = NULL;
+    char *recv_buf;
+    int i;
+
+    m = message_init(NULL, 0, 0, scenario, sizeof(scenario)/sizeof(scenario[0]));
+    ALLOC(recv_buf, m->outlen);
     
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    MPI_Type_indexed(4, blocklens, displs, MPI_CHAR, &type);
+    MPI_Type_indexed(m->nblocks, m->blens, m->displs, MPI_CHAR, &type);
     MPI_Type_commit(&type);
     
     if( rank == 0 ){
         int i;
-        MPI_Send(buf1, 1, MPI_CHAR, 1, 0, MPI_COMM_WORLD);
-        MPI_Isend(buf1, 1, type, 1, 0, MPI_COMM_WORLD, &req);
+        MPI_Send(sync, 1, MPI_CHAR, 1, 0, MPI_COMM_WORLD);
+        MPI_Isend(m->base_addr, 1, type, 1, 0, MPI_COMM_WORLD, &req);
         MPI_Wait(&req, MPI_STATUS_IGNORE);
     } else {
         int i;
-        MPI_Recv(rcv_buf, 1, MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        MPI_Recv(rcv_buf, rcv_size, MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Recv(sync, 1, MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Recv(recv_buf, m->outlen, MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         printf("Received: ");
-        for(i=0; i < rcv_size; i++){
-            printf("%c ", rcv_buf[i]);
+        for(i=0; i < m->outlen; i++){
+            if( recv_buf[i] != m->outbuf[i] ){
+                printf("Message mismatch in offset=%d, expect '%c', got '%c'\n",
+                        i, m->outbuf[i], recv_buf[i]);
+            }
+            printf("%c ", recv_buf[i]);
         }
         printf("\n");
     }
