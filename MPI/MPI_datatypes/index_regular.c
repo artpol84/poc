@@ -3,7 +3,7 @@
 #include "utils.h"
 
 #ifndef START_IDX
-#define START_IDX 16
+#define START_IDX 2
 #endif
 
 message_desc_t scenario[] = {
@@ -19,7 +19,7 @@ int main(int argc, char **argv)
     char *recv_buf, sync[1];
     int i;
 
-    m = message_init(NULL, 0, 0, 0, scenario, sizeof(scenario)/sizeof(scenario[0]));
+    m = message_init(NULL, 0, 0, START_IDX, scenario, sizeof(scenario)/sizeof(scenario[0]));
     ALLOC(recv_buf, m->outlen);
     
     MPI_Init(&argc, &argv);
