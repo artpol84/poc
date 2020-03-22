@@ -2,7 +2,7 @@
 #include <mpi.h>
 #include "utils.h"
 
-char init_symb(bufidx, idx)
+char init_symb(int bufidx, int idx)
 {
     char start, end;
     int len;
