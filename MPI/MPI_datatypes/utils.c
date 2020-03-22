@@ -84,6 +84,10 @@ message_t *message_init(char *base_ptr, int rangeidx, int bufidx, int blockidx, 
     int out_offs;
     message_t *m;
     int buf_offs = 0;
+    int rank;
+    
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
 
     ALLOC(m, 1);
     m->ranges_cnt = desc_cnt;
@@ -102,6 +106,10 @@ message_t *message_init(char *base_ptr, int rangeidx, int bufidx, int blockidx, 
     if(base_ptr == NULL){
         /* point to the very first buffer */
         base_ptr = m->ranges[rangeidx]->inbufs[bufidx] + m->ranges[rangeidx]->strides[bufidx] * blockidx;
+        if( rank == 0 ){
+            printf("BASE addr: (%d, %d, %d), start_offs = %zd\n", rangeidx, bufidx, blockidx, 
+                    base_ptr - m->ranges[0]->inbufs[0]);
+        }
     }
     m->base_addr = base_ptr;
 
