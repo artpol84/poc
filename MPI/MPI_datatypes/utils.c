@@ -124,11 +124,12 @@ message_t *message_init(char *base_ptr, int rangeidx, int bufidx, int blockidx, 
 
 void create_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
                       message_desc_t *scenario, int desc_cnt,
-                      MPI_Datatype *type, message_t **m)
+                      MPI_Datatype *type, message_t **m_out)
 {
-    *m = message_init(base_ptr, rangeidx, bufidx, blockidx, scenario, desc_cnt);
+    messgae_t *m = message_init(base_ptr, rangeidx, bufidx, blockidx, scenario, desc_cnt);
     MPI_Type_indexed(m->nblocks, m->blens, m->displs, MPI_CHAR, type);
     MPI_Type_commit(type);
+    *m_out = m;
 }
 
 int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx, message_desc_t *scenario, int desc_cnt)
