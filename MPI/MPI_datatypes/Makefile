@@ -1,4 +1,4 @@
-MPICC ?= /home/artpol/sandbox/openmpi-3.1.3/bin/mpicc
+MPICC ?= mpicc
 
 UTILS_SRC = utils.c
 UTILS = $(UTILS_SRC) utils.h
