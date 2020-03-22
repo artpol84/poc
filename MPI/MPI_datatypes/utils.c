@@ -136,7 +136,7 @@ void create_mpi_index(int verbose,
     *m_out = m;
 }
 
-int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx, message_desc_t *scenario, int desc_cnt)
+int exchange_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx, message_desc_t *scenario, int desc_cnt)
 {
     MPI_Datatype type;
     int rank;
@@ -177,6 +177,70 @@ int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx, messa
             }
             if(verbose){
                 printf("\n");
+            }
+        }
+        verbose = 0;
+    }
+
+    return rc;
+}
+
+
+int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
+                   message_desc_t *scenario, int desc_cnt, int ndts)
+{
+    MPI_Datatype type[ndts];
+    int rank;
+    MPI_Request reqs[ndts];
+    message_t *m[ndts];
+    char *recv_buf[ndts], sync[1];
+    int k, j;
+    int rc = 0;
+
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    for(j = 0; j < ndts; j++){
+        create_mpi_index(1, base_ptr, rangeidx, bufidx, blockidx,
+                         scenario, desc_cnt,
+                         &type[j], &m[j]);
+        ALLOC(recv_buf[j], m[j]->outlen);
+    }
+    int verbose = 1;
+    for(k = 0; k < 5; k++) {
+        if( rank == 0 ){
+            MPI_Send(sync, 1, MPI_CHAR, 1, 0, MPI_COMM_WORLD);
+            for(j=0; j<ndts; j++){
+                MPI_Isend(m[j]->base_addr, 1, type[j], 1, 0, MPI_COMM_WORLD,
+                          &reqs[j]);
+            }
+            MPI_Waitall(ndts, reqs, MPI_STATUSES_IGNORE);
+        } else {
+            int i;
+            MPI_Recv(sync, 1, MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+            for(j=0; j<ndts; j++){
+                MPI_Irecv(recv_buf[j], m[j]->outlen, MPI_CHAR, 0, 0,
+                          MPI_COMM_WORLD, &reqs[j]);
+            }
+            MPI_Waitall(ndts, reqs, MPI_STATUSES_IGNORE);
+
+            for(j=0; j < ndts; j++){
+                if(verbose){
+                    printf("[%d] Received: ", j);
+                }
+                for(i=0; i < m[j]->outlen; i++){
+                    if( recv_buf[j][i] != m[j]->outbuf[i] ){
+                        printf("Message mismatch in offset=%d, expect '%c', got '%c'\n",
+                               i, m[j]->outbuf[i], recv_buf[j][i]);
+                        rc = 1;
+                    }
+                    if(verbose) {
+                        printf("%c", recv_buf[j][i]);
+                    }
+                }
+                if(verbose){
+                    printf("\n");
+                }
             }
         }
         verbose = 0;

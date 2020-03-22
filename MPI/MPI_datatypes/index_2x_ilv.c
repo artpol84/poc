@@ -15,6 +15,7 @@ int main(int argc, char **argv)
     };
 
     MPI_Init(&argc, &argv);
-    test_mpi_index(NULL, BASE_RANGE, 0, 0, scenario, sizeof(scenario)/sizeof(scenario[0]));
+    test_mpi_index(NULL, BASE_RANGE, 0, 0,
+                   scenario, sizeof(scenario)/sizeof(scenario[0]), 1);
     MPI_Finalize();
 }
