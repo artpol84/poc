@@ -21,6 +21,7 @@ all: $(UTILS) $(TESTS)
 	$(MPICC) -o index_2x_ilv_offs0 -DBASE_RANGE=0 -g index_2x_ilv.c $(UTILS) 
 	$(MPICC) -o index_2x_ilv_offsM -DBASE_RANGE=1 -g index_2x_ilv.c $(UTILS) 
 	$(MPICC) -o vector -g vector.c
+	$(MPICC) -o index_perf -g index_perf.c $(UTILS) 
 
 clean:
 	rm -f index_ilv_w_block_offs* index_mixed1_offs* index_plain_offs* index_regular_str_offs* index_regular_ilv_offs* vector index_2x_str_offs* index_2x_ilv_offs*
