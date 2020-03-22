@@ -48,7 +48,7 @@ int main(int argc, char **argv)
     int iterations = 100;
 
     message_desc_t scenario[] = {
-        { 1, 1, { 30 }, {256} },
+        { 1, 1, { 30*8 }, {256*8} },
         { 1, 23, {30*8}, {60*8} },
 
     };
