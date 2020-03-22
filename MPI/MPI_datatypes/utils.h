@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <mpi.h>
 
 typedef struct range_s {
     int bufcnt;
@@ -33,3 +34,6 @@ void range_fill(range_t *r, char *base_addr, int displs[], int blocklens[], char
 
 message_t *message_init(char *base_ptr, int rangeidx, int bufidx, int blockidx, message_desc_t *desc, int desc_cnt);
 int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx, message_desc_t *scenario, int desc_cnt);
+void create_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
+                      message_desc_t *scenario, int desc_cnt,
+                      MPI_Datatype *type, message_t **m_out);
