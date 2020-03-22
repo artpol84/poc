@@ -122,6 +122,15 @@ message_t *message_init(char *base_ptr, int rangeidx, int bufidx, int blockidx, 
     return m;
 }
 
+void create_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
+                      message_desc_t *scenario, int desc_cnt,
+                      MPI_Datatype *type, message_t **m)
+{
+    *m = message_init(base_ptr, rangeidx, bufidx, blockidx, scenario, desc_cnt);
+    MPI_Type_indexed(m->nblocks, m->blens, m->displs, MPI_CHAR, type);
+    MPI_Type_commit(type);
+}
+
 int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx, message_desc_t *scenario, int desc_cnt)
 {
     MPI_Datatype type;
@@ -132,14 +141,12 @@ int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx, messa
     int i;
     int rc = 0;
 
-    m = message_init(base_ptr, rangeidx, bufidx, blockidx, scenario, desc_cnt);
-    ALLOC(recv_buf, m->outlen);
-    
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    MPI_Type_indexed(m->nblocks, m->blens, m->displs, MPI_CHAR, &type);
-    MPI_Type_commit(&type);
-    
+    create_mpi_index(base_ptr, rangeidx, bufidx, blockidx, scenario, desc_cnt,
+                     &type, &m);
+    ALLOC(recv_buf, m->outlen);
+
     if( rank == 0 ){
         MPI_Send(sync, 1, MPI_CHAR, 1, 0, MPI_COMM_WORLD);
         MPI_Isend(m->base_addr, 1, type, 1, 0, MPI_COMM_WORLD, &req);
