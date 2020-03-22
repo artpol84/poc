@@ -126,7 +126,7 @@ void create_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
                       message_desc_t *scenario, int desc_cnt,
                       MPI_Datatype *type, message_t **m_out)
 {
-    messgae_t *m = message_init(base_ptr, rangeidx, bufidx, blockidx, scenario, desc_cnt);
+    message_t *m = message_init(base_ptr, rangeidx, bufidx, blockidx, scenario, desc_cnt);
     MPI_Type_indexed(m->nblocks, m->blens, m->displs, MPI_CHAR, type);
     MPI_Type_commit(type);
     *m_out = m;
