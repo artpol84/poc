@@ -162,7 +162,9 @@ int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx, messa
             int i;
             MPI_Recv(sync, 1, MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             MPI_Recv(recv_buf, m->outlen, MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            printf("Received: ");
+            if(verbose){
+                printf("Received: ");
+            }
             for(i=0; i < m->outlen; i++){
                 if( recv_buf[i] != m->outbuf[i] ){
                     printf("Message mismatch in offset=%d, expect '%c', got '%c'\n",
@@ -173,7 +175,9 @@ int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx, messa
                     printf("%c", recv_buf[i]);
                 }
             }
-            printf("\n");
+            if(verbose){
+                printf("\n");
+            }
         }
         verbose = 0;
     }
