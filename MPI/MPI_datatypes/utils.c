@@ -77,7 +77,10 @@ void range_fill(range_t *r, char *base_addr, int displs[], int blocklens[], char
 }
 
 
-message_t *message_init(char *base_ptr, int rangeidx, int bufidx, int blockidx, message_desc_t *desc, int desc_cnt)
+message_t *message_init(int verbose,
+                        char *base_ptr,
+                        int rangeidx, int bufidx, int blockidx,
+                        message_desc_t *desc, int desc_cnt)
 {
     int i;
     int blk_offs;
@@ -106,7 +109,7 @@ message_t *message_init(char *base_ptr, int rangeidx, int bufidx, int blockidx, 
     if(base_ptr == NULL){
         /* point to the very first buffer */
         base_ptr = m->ranges[rangeidx]->inbufs[bufidx] + m->ranges[rangeidx]->strides[bufidx] * blockidx;
-        if( rank == 0 ){
+        if( rank == 0 && verbose ){
             printf("BASE addr: (%d, %d, %d), start_offs = %zd\n", rangeidx, bufidx, blockidx, 
                     base_ptr - m->ranges[0]->inbufs[0]);
         }
@@ -122,11 +125,12 @@ message_t *message_init(char *base_ptr, int rangeidx, int bufidx, int blockidx, 
     return m;
 }
 
-void create_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
+void create_mpi_index(int verbose,
+                      char *base_ptr, int rangeidx, int bufidx, int blockidx,
                       message_desc_t *scenario, int desc_cnt,
                       MPI_Datatype *type, message_t **m_out)
 {
-    message_t *m = message_init(base_ptr, rangeidx, bufidx, blockidx, scenario, desc_cnt);
+    message_t *m = message_init(verbose, base_ptr, rangeidx, bufidx, blockidx, scenario, desc_cnt);
     MPI_Type_indexed(m->nblocks, m->blens, m->displs, MPI_CHAR, type);
     MPI_Type_commit(type);
     *m_out = m;
@@ -144,7 +148,7 @@ int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx, messa
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    create_mpi_index(base_ptr, rangeidx, bufidx, blockidx, scenario, desc_cnt,
+    create_mpi_index(1, base_ptr, rangeidx, bufidx, blockidx, scenario, desc_cnt,
                      &type, &m);
     ALLOC(recv_buf, m->outlen);
 

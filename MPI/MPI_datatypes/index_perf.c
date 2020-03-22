@@ -69,7 +69,7 @@ int main(int argc, char **argv)
     int i;
 
     for(i = 0; i < wsize; i++){
-        create_mpi_index(NULL, 0, 0, 0, scenario, sizeof(scenario)/sizeof(scenario[0]),
+        create_mpi_index(0, NULL, 0, 0, 0, scenario, sizeof(scenario)/sizeof(scenario[0]),
                 &types[i], &msgs[i]);
         ALLOC(recv_bufs[i], msgs[i]->outlen);
     }
