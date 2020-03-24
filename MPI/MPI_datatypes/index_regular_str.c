@@ -27,7 +27,7 @@ OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "utils.h"
 
 #ifndef BASE_IDX
-#define BASE_IDX 2
+#define BASE_IDX 0
 #endif
 
 #ifndef RECV_TYPE

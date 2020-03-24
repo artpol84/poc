@@ -180,6 +180,7 @@ int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
         ALLOC(recv_buf[j], m[j]->outlen);
     }
     int verbose = 1;
+    printf("Use recv DT: %d\n", recv_use_dt);
     for(k = 0; k < 5; k++) {
         if( rank == 0 ){
             MPI_Send(sync, 1, MPI_CHAR, 1, 0, MPI_COMM_WORLD);

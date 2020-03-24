@@ -28,7 +28,7 @@ OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "utils.h"
 
 #ifndef BASE_RANGE
-#define BASE_RANGE 2
+#define BASE_RANGE 0
 #endif
 
 #ifndef RECV_TYPE
