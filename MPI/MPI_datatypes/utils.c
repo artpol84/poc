@@ -136,56 +136,6 @@ void create_mpi_index(int verbose,
     *m_out = m;
 }
 
-int exchange_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx, message_desc_t *scenario, int desc_cnt)
-{
-    MPI_Datatype type;
-    int rank;
-    MPI_Request req;
-    message_t *m = NULL;
-    char *recv_buf, sync[1];
-    int k;
-    int rc = 0;
-
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-    create_mpi_index(1, base_ptr, rangeidx, bufidx, blockidx, scenario, desc_cnt,
-                     &type, &m);
-    ALLOC(recv_buf, m->outlen);
-
-    int verbose = 1;
-    for(k = 0; k < 5; k++) {
-        if( rank == 0 ){
-            MPI_Send(sync, 1, MPI_CHAR, 1, 0, MPI_COMM_WORLD);
-            MPI_Isend(m->base_addr, 1, type, 1, 0, MPI_COMM_WORLD, &req);
-            MPI_Wait(&req, MPI_STATUS_IGNORE);
-        } else {
-            int i;
-            MPI_Recv(sync, 1, MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            MPI_Recv(recv_buf, m->outlen, MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            if(verbose){
-                printf("Received: ");
-            }
-            for(i=0; i < m->outlen; i++){
-                if( recv_buf[i] != m->outbuf[i] ){
-                    printf("Message mismatch in offset=%d, expect '%c', got '%c'\n",
-                           i, m->outbuf[i], recv_buf[i]);
-                    rc = 1;
-                }
-                if(verbose) {
-                    printf("%c", recv_buf[i]);
-                }
-            }
-            if(verbose){
-                printf("\n");
-            }
-        }
-        verbose = 0;
-    }
-
-    return rc;
-}
-
-
 int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
                    message_desc_t *scenario, int desc_cnt, int ndts)
 {
