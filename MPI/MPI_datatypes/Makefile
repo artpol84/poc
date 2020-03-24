@@ -26,4 +26,4 @@ all: $(UTILS) $(TESTS)
 
 
 clean:
-	rm -f index_ilv_w_block_offs* index_mixed1_offs* index_plain_offs* index_regular_str_offs* index_regular_ilv_offs* vector index_2x_str_offs* index_2x_ilv_offs* index_perf
+	rm -f index_ilv_w_block_offs* index_mixed1_offs* index_plain_offs* index_regular_str_offs* index_regular_ilv_offs* vector index_2x_str_offs* index_2x_ilv_offs* index_perf index_two_dts

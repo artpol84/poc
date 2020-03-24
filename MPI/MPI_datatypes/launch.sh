@@ -14,7 +14,7 @@ function exec_test()
     done
 }
 
-tests="vector index_plain index_regular_str index_regular_ilv index_ilv_w_block index_2x_ilv index_2x_str index_mixed1"
+tests="vector index_plain index_regular_str index_regular_ilv index_ilv_w_block index_2x_ilv index_2x_str index_mixed1 index_two_dts"
 
 for t in $tests; do
     exec_test $t
