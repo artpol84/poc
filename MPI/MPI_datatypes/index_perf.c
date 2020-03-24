@@ -68,7 +68,7 @@ void measure_cycle(int wsize, MPI_Datatype types[], message_t *msgs[],
 int main(int argc, char **argv)
 {
     int wsize, rank;
-    int warmups = 10;
+    int warmups = 0;
     int iterations = 100;
 
     message_desc_t scenario[] = {

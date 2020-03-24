@@ -161,7 +161,7 @@ void create_mpi_index(int verbose,
 }
 
 int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
-                   message_desc_t *scenario, int desc_cnt, int ndts)
+                   message_desc_t *scenario, int desc_cnt, int ndts, int recv_use_dt)
 {
     MPI_Datatype type[ndts];
     int rank;
@@ -193,8 +193,13 @@ int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
             MPI_Recv(sync, 1, MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
             for(j=0; j<ndts; j++){
-                MPI_Irecv(recv_buf[j], m[j]->outlen, MPI_CHAR, 0, 0,
-                          MPI_COMM_WORLD, &reqs[j]);
+                if(!recv_use_dt) {
+                    MPI_Irecv(recv_buf[j], m[j]->outlen, MPI_CHAR, 0, 0,
+                              MPI_COMM_WORLD, &reqs[j]);
+                } else {
+                    MPI_Irecv(m[j]->base_addr, 1, type[j], 0, 0,
+                              MPI_COMM_WORLD, &reqs[j]);
+                }
             }
             MPI_Waitall(ndts, reqs, MPI_STATUSES_IGNORE);
 

@@ -30,6 +30,10 @@ OF THE POSSIBILITY OF SUCH DAMAGE.
 #define BASE_RANGE 1
 #endif
 
+#ifndef RECV_TYPE
+#define RECV_TYPE 0
+#endif
+
 int main(int argc, char **argv)
 {
     message_desc_t scenario[] = {
@@ -38,6 +42,6 @@ int main(int argc, char **argv)
     };
     MPI_Init(&argc, &argv);
     test_mpi_index(NULL, BASE_RANGE, 0, 0,
-                   scenario, sizeof(scenario)/sizeof(scenario[0]), 1);
+                   scenario, sizeof(scenario)/sizeof(scenario[0]), 1, RECV_TYPE);
     MPI_Finalize();
 }

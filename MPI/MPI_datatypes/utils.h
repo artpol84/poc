@@ -66,4 +66,5 @@ void create_mpi_index(int verbose,
                       message_desc_t *scenario, int desc_cnt,
                       MPI_Datatype *type, message_t **m_out);
 int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
-                   message_desc_t *scenario, int desc_cnt, int ndts);
+                   message_desc_t *scenario, int desc_cnt,
+                   int ndts, int recv_use_dt);
