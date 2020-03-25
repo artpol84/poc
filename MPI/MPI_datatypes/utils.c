@@ -24,6 +24,7 @@ OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <stdio.h>
 #include <mpi.h>
+#include <assert.h>
 #include "utils.h"
 
 char init_symb(int bufidx, int idx)
@@ -100,6 +101,35 @@ void range_fill(range_t *r, char *base_addr, int displs[], int blocklens[], char
     }
 }
 
+void range_clear(range_t *r)
+{
+    int i;
+    for(i = 0; i < r->bufcnt; i++){
+        memset(r->inbufs[i], 0x0, r->insizes[i]);
+    }
+}
+
+int range_verify(range_t *r, int range_num, char *etalon, int etalon_len,
+                 int start_offset)
+{
+    int i, j, k;
+    int offset = start_offset;
+    for(j = 0; j < r->repcnt; j++){
+        for(i = 0; i < r->bufcnt; i++){
+            char *ptr = r->inbufs[i] + j * r->strides[i];
+            for(k = 0; k < r->payloads[i]; k++, offset++) {
+                assert(etalon_len > offset);
+                if( etalon[offset] != ptr[k] ){
+                    printf("Message mismatch in range=%d, repcount=%d, buf_num=%d, idx=%d, etalon_offs=%d, expect '%c', got '%c'\n",
+                           range_num, j, i, k, offset, etalon[offset],  ptr[k]);
+                    return -1;
+                }
+            }
+        }
+    }
+    return offset;
+}
+
 
 message_t *message_init(int verbose,
                         char *base_ptr,
@@ -160,6 +190,38 @@ void create_mpi_index(int verbose,
     *m_out = m;
 }
 
+void prepare_to_recv(message_t *m)
+{
+    int i;
+    for(i=0; i < m->ranges_cnt; i++) {
+        range_clear(m->ranges[i]);
+    }
+}
+
+static void verify_recv(message_t *m, char *recv_buf, int recv_use_dt)
+{
+    int i, j;
+    if( !recv_use_dt ) {
+        for(i=0; i < m->outlen; i++){
+            if( recv_buf[i] != m->outbuf[i] ){
+                printf("Message mismatch in offset=%d, expect '%c', got '%c'\n",
+                       i, m->outbuf[i], recv_buf[i]);
+                return;
+            }
+        }
+    } else {
+        int offset = 0;
+        for(i=0; i < m->ranges_cnt; i++) {
+            offset = range_verify(m->ranges[i], i, m->outbuf, m->outlen, offset);
+            if(offset < 0) {
+                /* verification failed */
+                return;
+            }
+        }
+
+    }
+}
+
 int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
                    message_desc_t *scenario, int desc_cnt, int ndts, int recv_use_dt)
 {
@@ -194,6 +256,7 @@ int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
             MPI_Recv(sync, 1, MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
             for(j=0; j<ndts; j++){
+                prepare_to_recv(m[j]);
                 if(!recv_use_dt) {
                     MPI_Irecv(recv_buf[j], m[j]->outlen, MPI_CHAR, 0, 0,
                               MPI_COMM_WORLD, &reqs[j]);
@@ -205,20 +268,12 @@ int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
             MPI_Waitall(ndts, reqs, MPI_STATUSES_IGNORE);
 
             for(j=0; j < ndts; j++){
+                verify_recv(m[j], recv_buf[j], recv_use_dt);
                 if(verbose){
                     printf("[%d] Received: ", j);
-                }
-                for(i=0; i < m[j]->outlen; i++){
-                    if( recv_buf[j][i] != m[j]->outbuf[i] ){
-                        printf("Message mismatch in offset=%d, expect '%c', got '%c'\n",
-                               i, m[j]->outbuf[i], recv_buf[j][i]);
-                        rc = 1;
-                    }
-                    if(verbose) {
+                    for(i=0; i < m[j]->outlen; i++){
                         printf("%c", recv_buf[j][i]);
                     }
-                }
-                if(verbose){
                     printf("\n");
                 }
             }
