@@ -203,7 +203,7 @@ void prepare_to_recv(message_t *m)
     }
 }
 
-static void verify_recv(message_t *m, char *recv_buf, int recv_use_dt)
+static int verify_recv(message_t *m, char *recv_buf, int recv_use_dt)
 {
     int i, j;
     if( !recv_use_dt ) {
@@ -211,7 +211,7 @@ static void verify_recv(message_t *m, char *recv_buf, int recv_use_dt)
             if( recv_buf[i] != m->outbuf[i] ){
                 printf("Message mismatch in offset=%d, expect '%c', got '%c'\n",
                        i, m->outbuf[i], recv_buf[i]);
-                return;
+                return -1;
             }
         }
     } else {
@@ -220,11 +220,12 @@ static void verify_recv(message_t *m, char *recv_buf, int recv_use_dt)
             offset = range_verify(m->ranges[i], i, m->outbuf, m->outlen, offset);
             if(offset < 0) {
                 /* verification failed */
-                return;
+                return -1;
             }
         }
 
     }
+    return 0;
 }
 
 int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
@@ -235,7 +236,7 @@ int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
     int rank;
     MPI_Request reqs[ndts];
     message_t *m[ndts];
-    char *recv_buf[ndts], sync[1];
+    char *recv_buf[ndts], sync[1] = "Z";
     int k, j;
     int rc = 0;
 
@@ -266,7 +267,7 @@ int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
             MPI_Waitall(ndts, reqs, MPI_STATUSES_IGNORE);
             if(unexp) {
                 /* Inform receiver that we sent everything */
-                MPI_Send(sync, 1, MPI_CHAR, 1, TAG_DATA, MPI_COMM_WORLD);
+                MPI_Send(sync, 1, MPI_CHAR, 1, TAG_SYNC, MPI_COMM_WORLD);
             }
         } else {
             int i;
@@ -294,7 +295,10 @@ int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
             MPI_Waitall(ndts, reqs, MPI_STATUSES_IGNORE);
 
             for(j=0; j < ndts; j++){
-                verify_recv(m[j], recv_buf[j], recv_use_dt);
+                if( verify_recv(m[j], recv_buf[j], recv_use_dt) ){
+            	    printf("Attempt: %d\n", k);
+            	}
+            	
                 if(verbose){
                     printf("[%d] Received: ", j);
                     for(i=0; i < m[j]->outlen; i++){
