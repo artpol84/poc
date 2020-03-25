@@ -61,7 +61,8 @@ all: $(UTILS) $(TESTS)
 	$(MPICC) -o vector -g vector.c
 	$(MPICC) -o index_perf -g index_perf.c $(UTILS) 
 	$(MPICC) -o index_two_dts -g index_two_dts.c $(UTILS) 
+	$(MPICC) -o index_zcopy_multi -g index_zcopy_multi.c $(UTILS) 
 
 
 clean:
-	rm -f *_offs* *_rcvdt_* vector index_perf index_two_dts
+	rm -f *_offs* *_rcvdt_* vector index_perf index_two_dts index_zcopy_multi
