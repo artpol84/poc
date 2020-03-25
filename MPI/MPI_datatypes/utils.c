@@ -226,7 +226,7 @@ static void verify_recv(message_t *m, char *recv_buf, int recv_use_dt)
 
 int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
                    message_desc_t *scenario, int desc_cnt,
-                   int ndts, int recv_use_dt, int force_unexp)
+                   int ndts, int recv_use_dt, int unexp)
 {
     MPI_Datatype type[ndts];
     int rank;
@@ -246,23 +246,29 @@ int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
     }
     int verbose = 1;
     if(0 == rank) {
-        printf("FLAGSL RECV_DT=%d, FORCE_UNEXP=%d\n", recv_use_dt, force_unexp);
+        printf("FLAGSL RECV_DT=%d, FORCE_UNEXP=%d\n", recv_use_dt, unexp);
     }
     for(k = 0; k < 5; k++) {
         if( rank == 0 ){
             MPI_Send(sync, 1, MPI_CHAR, 1, 0, MPI_COMM_WORLD);
+            if(!unexp){
+                MPI_Request sreq;
+                MPI_Irecv(sync, 1, MPI_CHAR, 0, 0, MPI_COMM_WORLD, &sreq);
+                MPI_Wait(&sreq, MPI_STATUS_IGNORE);
+            }
             for(j=0; j<ndts; j++){
                 MPI_Isend(m[j]->base_addr, 1, type[j], 1, 0, MPI_COMM_WORLD,
                           &reqs[j]);
             }
             MPI_Waitall(ndts, reqs, MPI_STATUSES_IGNORE);
-            if(force_unexp) {
+            if(unexp) {
+                /* Inform receiver that we sent everything */
                 MPI_Send(sync, 1, MPI_CHAR, 1, 0, MPI_COMM_WORLD);
             }
         } else {
             int i;
             MPI_Recv(sync, 1, MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            if(force_unexp) {
+            if(unexp) {
                 MPI_Request sreq;
                 MPI_Irecv(sync, 1, MPI_CHAR, 0, 0, MPI_COMM_WORLD, &sreq);
                 MPI_Wait(&sreq, MPI_STATUS_IGNORE);
@@ -277,6 +283,10 @@ int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
                     MPI_Irecv(m[j]->base_addr, 1, type[j], 0, 0,
                               MPI_COMM_WORLD, &reqs[j]);
                 }
+            }
+            if(!unexp) {
+                /* Inform sender that we posted everything */
+                MPI_Send(sync, 1, MPI_CHAR, 1, 0, MPI_COMM_WORLD);
             }
             MPI_Waitall(ndts, reqs, MPI_STATUSES_IGNORE);
 
