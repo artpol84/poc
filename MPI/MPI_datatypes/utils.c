@@ -119,6 +119,8 @@ int range_verify(range_t *r, int range_num, char *etalon, int etalon_len,
             char *ptr = r->inbufs[i] + j * r->strides[i];
             for(k = 0; k < r->payloads[i]; k++, offset++) {
                 assert(etalon_len > offset);
+//                printf("Compare: etalon[%d]='%c' <-> range=%d, repcount=%d, bufcnt=%d, idx=%d, val='%c'\n",
+//                       offset, etalon[offset], range_num, j, i, k, ptr[k]);
                 if( etalon[offset] != ptr[k] ){
                     printf("Message mismatch in range=%d, repcount=%d, buf_num=%d, idx=%d, etalon_offs=%d, expect '%c', got '%c'\n",
                            range_num, j, i, k, offset, etalon[offset],  ptr[k]);
