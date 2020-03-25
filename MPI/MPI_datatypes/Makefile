@@ -32,23 +32,29 @@ TESTS = index_ilv_w_block.c index_mixed1.c index_plain.c index_regular_str.c ind
 all: $(UTILS) $(TESTS) 
 	$(MPICC) -o index_ilv_w_block_offs0 -DBASE_RANGE=0 -g index_ilv_w_block.c $(UTILS) 
 	$(MPICC) -o index_ilv_w_block_offsM -DBASE_RANGE=1 -g index_ilv_w_block.c $(UTILS) 
+	$(MPICC) -o index_ilv_w_block_rcvdt -DRECV_TYPE=1 -g index_ilv_w_block.c $(UTILS) 
 	$(MPICC) -o index_mixed1_offs0 -DBASE_RANGE=0 -g index_mixed1.c $(UTILS)
 	$(MPICC) -o index_mixed1_offsM -DBASE_RANGE=2 -g index_mixed1.c $(UTILS)
+	$(MPICC) -o index_mixed1_rcvdt -DRECV_TYPE=1 -g index_mixed1.c $(UTILS)
 	$(MPICC) -o index_plain_offs0 -DBASE_RANGE=0 -g index_plain.c $(UTILS)
 	$(MPICC) -o index_plain_offsM -DBASE_RANGE=1 -g index_plain.c $(UTILS)
 	$(MPICC) -o index_plain_rcvdt -DRECV_TYPE=1 -g index_plain.c $(UTILS)
 	$(MPICC) -o index_regular_str_offs0 -DBASE_IDX=0 -g index_regular_str.c $(UTILS)
 	$(MPICC) -o index_regular_str_offsM -DBASE_IDX=2 -g index_regular_str.c $(UTILS)
+	$(MPICC) -o index_regular_str_rcvdt -DRECV_TYPE=1 -g index_regular_str.c $(UTILS)
 	$(MPICC) -o index_regular_ilv_offs0 -DBASE_IDX=0 -g index_regular_ilv.c $(UTILS) 
 	$(MPICC) -o index_regular_ilv_offsM -DBASE_IDX=3 -g index_regular_ilv.c $(UTILS) 
+	$(MPICC) -o index_regular_ilv_rcvdt -DRECV_TYPE=1 -g index_regular_ilv.c $(UTILS) 
 	$(MPICC) -o index_2x_str_offs0 -DBASE_RANGE=0 -g index_2x_str.c $(UTILS) 
 	$(MPICC) -o index_2x_str_offsM -DBASE_RANGE=1 -g index_2x_str.c $(UTILS) 
+	$(MPICC) -o index_2x_str_rcvdt -DRECV_TYPE=1 -g index_2x_str.c $(UTILS) 
 	$(MPICC) -o index_2x_ilv_offs0 -DBASE_RANGE=0 -g index_2x_ilv.c $(UTILS) 
 	$(MPICC) -o index_2x_ilv_offsM -DBASE_RANGE=1 -g index_2x_ilv.c $(UTILS) 
+	$(MPICC) -o index_2x_ilv_rcvdt -DRECV_TYPE=1 -g index_2x_ilv.c $(UTILS) 
 	$(MPICC) -o vector -g vector.c
 	$(MPICC) -o index_perf -g index_perf.c $(UTILS) 
 	$(MPICC) -o index_two_dts -g index_two_dts.c $(UTILS) 
 
 
 clean:
-	rm -f index_ilv_w_block_offs* index_mixed1_offs* index_plain_offs* index_regular_str_offs* index_regular_ilv_offs* vector index_2x_str_offs* index_2x_ilv_offs* index_perf index_two_dts
+	rm -f *_offs* *_rcvdt vector index_perf index_two_dts
