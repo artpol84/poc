@@ -65,6 +65,30 @@ void create_mpi_index(int verbose,
                       char *base_ptr, int rangeidx, int bufidx, int blockidx,
                       message_desc_t *scenario, int desc_cnt,
                       MPI_Datatype *type, message_t **m_out);
+
+#ifndef BASE_RANGE
+#define BASE_RANGE 0
+#endif
+
+#ifndef BASE_BUF
+#define BASE_BUF 0
+#endif
+
+#ifndef BASE_IDX
+#define BASE_IDX 0
+#endif
+
+#ifndef RECV_TYPE
+#define RECV_TYPE 0
+#endif
+
+#ifndef FORCE_UNEXP
+#define FORCE_UNEXP 0
+#endif
+
+
 int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
                    message_desc_t *scenario, int desc_cnt,
-                   int ndts, int recv_use_dt);
+                   int ndts, int recv_use_dt, int force_unexp);
+
+

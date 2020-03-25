@@ -26,21 +26,14 @@ OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <mpi.h>
 #include "utils.h"
 
-#ifndef BASE_IDX
-#define BASE_IDX 0
-#endif
-
-#ifndef RECV_TYPE
-#define RECV_TYPE 0
-#endif
-
 int main(int argc, char **argv)
 {
     message_desc_t scenario[] = {
         { 1, 4, {2}, {4} }
     };
     MPI_Init(&argc, &argv);
-    test_mpi_index(NULL, 0, 0, BASE_IDX,
-                   scenario, sizeof(scenario)/sizeof(scenario[0]), 1, RECV_TYPE);
+    test_mpi_index(NULL, BASE_RANGE, BASE_BUF, BASE_IDX,
+                   scenario, sizeof(scenario)/sizeof(scenario[0]), 1,
+                   RECV_TYPE, FORCE_UNEXP);
     MPI_Finalize();
 }
