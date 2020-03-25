@@ -28,7 +28,7 @@ function exec_test()
     if [ -f "./$1" ]; then
         execs="./$1"
     else
-        execs="./${1}_offs0 ./${1}_offsM ./${1}_rcvdt"
+        execs="./${1}_offs0 ./${1}_offsM ./${1}_rcvdt_exp ${1}_rcvdt_unexp "
     fi
     for e in $execs; do
 	if [ ! -f "$e" ]; then

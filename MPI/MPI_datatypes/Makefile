@@ -64,4 +64,4 @@ all: $(UTILS) $(TESTS)
 
 
 clean:
-	rm -f *_offs* *_rcvdt vector index_perf index_two_dts
+	rm -f *_offs* *_rcvdt_* vector index_perf index_two_dts
