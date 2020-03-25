@@ -27,6 +27,9 @@ OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <assert.h>
 #include "utils.h"
 
+#define TAG_SYNC 10
+#define TAG_DATA 11
+
 char init_symb(int bufidx, int idx)
 {
     char start, end;
@@ -250,43 +253,43 @@ int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
     }
     for(k = 0; k < 5; k++) {
         if( rank == 0 ){
-            MPI_Send(sync, 1, MPI_CHAR, 1, 0, MPI_COMM_WORLD);
+            MPI_Send(sync, 1, MPI_CHAR, 1, TAG_SYNC, MPI_COMM_WORLD);
             if(!unexp){
                 MPI_Request sreq;
-                MPI_Irecv(sync, 1, MPI_CHAR, 0, 0, MPI_COMM_WORLD, &sreq);
+                MPI_Irecv(sync, 1, MPI_CHAR, 1, TAG_SYNC, MPI_COMM_WORLD, &sreq);
                 MPI_Wait(&sreq, MPI_STATUS_IGNORE);
             }
             for(j=0; j<ndts; j++){
-                MPI_Isend(m[j]->base_addr, 1, type[j], 1, 0, MPI_COMM_WORLD,
+                MPI_Isend(m[j]->base_addr, 1, type[j], 1, TAG_DATA, MPI_COMM_WORLD,
                           &reqs[j]);
             }
             MPI_Waitall(ndts, reqs, MPI_STATUSES_IGNORE);
             if(unexp) {
                 /* Inform receiver that we sent everything */
-                MPI_Send(sync, 1, MPI_CHAR, 1, 0, MPI_COMM_WORLD);
+                MPI_Send(sync, 1, MPI_CHAR, 1, TAG_DATA, MPI_COMM_WORLD);
             }
         } else {
             int i;
-            MPI_Recv(sync, 1, MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            MPI_Recv(sync, 1, MPI_CHAR, 0, TAG_SYNC, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             if(unexp) {
                 MPI_Request sreq;
-                MPI_Irecv(sync, 1, MPI_CHAR, 0, 0, MPI_COMM_WORLD, &sreq);
+                MPI_Irecv(sync, 1, MPI_CHAR, 0, TAG_SYNC, MPI_COMM_WORLD, &sreq);
                 MPI_Wait(&sreq, MPI_STATUS_IGNORE);
             }
 
             for(j=0; j<ndts; j++){
                 prepare_to_recv(m[j]);
                 if(!recv_use_dt) {
-                    MPI_Irecv(recv_buf[j], m[j]->outlen, MPI_CHAR, 0, 0,
+                    MPI_Irecv(recv_buf[j], m[j]->outlen, MPI_CHAR, 0, TAG_DATA,
                               MPI_COMM_WORLD, &reqs[j]);
                 } else {
-                    MPI_Irecv(m[j]->base_addr, 1, type[j], 0, 0,
+                    MPI_Irecv(m[j]->base_addr, 1, type[j], 0, TAG_DATA,
                               MPI_COMM_WORLD, &reqs[j]);
                 }
             }
             if(!unexp) {
                 /* Inform sender that we posted everything */
-                MPI_Send(sync, 1, MPI_CHAR, 1, 0, MPI_COMM_WORLD);
+                MPI_Send(sync, 1, MPI_CHAR, 0, TAG_SYNC, MPI_COMM_WORLD);
             }
             MPI_Waitall(ndts, reqs, MPI_STATUSES_IGNORE);
 
