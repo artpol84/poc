@@ -28,9 +28,12 @@ function exec_test()
     if [ -f "./$1" ]; then
         execs="./$1"
     else
-        execs="./${1}_offs0 ./${1}_offsM"
+        execs="./${1}_offs0 ./${1}_offsM ./${1}_rcvdt"
     fi
     for e in $execs; do
+	if [ ! -f "$e" ]; then
+	    continue
+	fi
         cmd="$MPIRUN -np 2 --map-by node --mca pml ucx -x UCX_TLS=rc_x --mca btl self $e"
         echo "Executing: $cmd"
         $cmd
