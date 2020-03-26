@@ -301,9 +301,12 @@ int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
             	
                 if(verbose){
                     printf("[%d] Received: ", j);
-                    for(i=0; i < m[j]->outlen; i++){
+                    for(i=0; i < m[j]->outlen && i < 256; i++){
                         printf("%c", recv_buf[j][i]);
                     }
+                    if( i < m[j]->outlen){
+                	printf(" ...");
+            	    }
                     printf("\n");
                 }
             }
