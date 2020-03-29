@@ -21,8 +21,8 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#MPICC ?= mpicc
-MPICC ?= /home/artpol/sandbox/openmpi-3.1.3/bin/mpicc
+MPICC ?= mpicc
+#MPICC ?= /home/artpol/sandbox/openmpi-3.1.3/bin/mpicc
 
 UTILS_SRC = utils.c
 UTILS = $(UTILS_SRC) utils.h
@@ -66,4 +66,4 @@ all: $(UTILS) $(TESTS)
 
 
 clean:
-	rm -f *_offs* *_rcvdt_* vector index_perf index_two_dts index_zcopy_multi
+	rm -f *_offs* *_rcvdt_* vector vector_rcache index_perf index_two_dts index_zcopy_multi
