@@ -27,7 +27,7 @@ MPICC ?= mpicc
 UTILS_SRC = utils.c
 UTILS = $(UTILS_SRC) utils.h
 
-TESTS = index_ilv_w_block.c index_mixed1.c index_plain.c index_regular_str.c index_regular_ilv.c vector.c vector_rcache.c index_2x_str.c index_2x_ilv.c
+TESTS = index_ilv_w_block.c index_mixed1.c index_plain.c index_regular_str.c index_regular_ilv.c vector.c vector_rcache.c index_2x_str.c index_2x_ilv.c index_repro_bug1.c
 
 all: $(UTILS) $(TESTS) 
 	$(MPICC) -o index_ilv_w_block_offs0 -DBASE_RANGE=0 -g index_ilv_w_block.c $(UTILS) 
@@ -40,6 +40,7 @@ all: $(UTILS) $(TESTS)
 	$(MPICC) -o index_mixed1_rcvdt_unexp -DRECV_TYPE=1 -DFORCE_UNEXP=1  -g index_mixed1.c $(UTILS)
 	$(MPICC) -o index_plain_offs0 -DBASE_RANGE=0 -g index_plain.c $(UTILS)
 	$(MPICC) -o index_plain_offsM -DBASE_RANGE=1 -g index_plain.c $(UTILS)
+	$(MPICC) -o index_repro_bug1 -g index_repro_bug1.c $(UTILS)
 	$(MPICC) -o index_plain_rcvdt_exp   -DRECV_TYPE=1 -g index_plain.c $(UTILS)
 	$(MPICC) -o index_plain_rcvdt_unexp -DRECV_TYPE=1 -DFORCE_UNEXP=1 -g index_plain.c $(UTILS)
 	$(MPICC) -o index_regular_str_offs0 -DBASE_IDX=0 -g index_regular_str.c $(UTILS)
@@ -66,4 +67,4 @@ all: $(UTILS) $(TESTS)
 
 
 clean:
-	rm -f *_offs* *_rcvdt_* vector vector_rcache index_perf index_two_dts index_zcopy_multi
+	rm -f *_offs* *_rcvdt_* vector vector_rcache index_perf index_two_dts index_zcopy_multi index_repro_bug1

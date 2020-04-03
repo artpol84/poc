@@ -34,13 +34,15 @@ function exec_test()
 	if [ ! -f "$e" ]; then
 	    continue
 	fi
-        cmd="$MPIRUN -np 2 --map-by node --mca pml ucx -x UCX_TLS=rc_x --mca btl self $e"
+	    DBGFLAGS="-x ARTPOL_USE_HW=1 -x ARTPOL_DEBUG_RANK=1 "
+        cmd="$MPIRUN -np 2 --map-by node --mca pml ucx -x UCX_TLS=rc_x --mca btl self $DBGFLAGS $e"
         echo "Executing: $cmd"
         $cmd
     done
 }
 
-tests="vector vector_rcache index_plain index_regular_str index_regular_ilv index_ilv_w_block index_2x_ilv index_2x_str index_mixed1 index_two_dts index_zcopy_multi"
+tests="vector vector_rcache index_plain index_regular_str index_regular_ilv index_ilv_w_block index_2x_ilv index_2x_str index_mixed1 index_two_dts index_zcopy_multi index_repro_bug1"
+#tests="vector 9index_plain index_regular_str index_regular_ilv index_ilv_w_block index_2x_ilv index_2x_str index_mixed1 index_two_dts index_zcopy_multi"
 
 for t in $tests; do
     exec_test $t
