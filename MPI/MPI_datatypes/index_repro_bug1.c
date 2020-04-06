@@ -27,12 +27,6 @@ OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <unistd.h>
 #include <mpi.h>
 
-#define PAYLOAD 256
-#define STRIDE 1024
-#define REPCNT 16
-#define BUFSIZE ((REPCNT + REPCNT/2) * STRIDE)
-#define BUFOFFS ((REPCNT/2) * STRIDE)
-
 int main(int argc, char **argv)
 {
     char *buf = NULL, sync[1], *base_addr = NULL;
@@ -76,6 +70,14 @@ int main(int argc, char **argv)
     } else {
         int i;
         MPI_Recv(sync, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        
+        {
+            int delay = 0;
+            while(delay) {
+                sleep(1);
+            }
+        }
+        
         MPI_Irecv(base_addr, 1, type, 0, 0, MPI_COMM_WORLD, &req);
         MPI_Wait(&req, MPI_STATUS_IGNORE);
 
@@ -90,6 +92,8 @@ int main(int argc, char **argv)
         }
 
     }
+
+    MPI_Type_free(&type);
     
     MPI_Finalize();
 }

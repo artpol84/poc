@@ -63,7 +63,9 @@ all: $(UTILS) $(TESTS)
 	$(MPICC) -o vector_rcache -g vector_rcache.c
 	$(MPICC) -o index_perf -g index_perf.c $(UTILS) 
 	$(MPICC) -o index_two_dts -g index_two_dts.c $(UTILS) 
-	$(MPICC) -o index_zcopy_multi -g index_zcopy_multi.c $(UTILS) 
+	$(MPICC) -o index_zcopy_multi_offs0 -g index_zcopy_multi.c $(UTILS) 
+	$(MPICC) -o index_zcopy_multi_rcvdt_exp   -DRECV_TYPE=1 -g index_zcopy_multi.c $(UTILS) 
+	$(MPICC) -o index_zcopy_multi_rcvdt_unexp -DRECV_TYPE=1 -DFORCE_UNEXP=1 -g index_zcopy_multi.c $(UTILS) 
 
 
 clean:

@@ -72,5 +72,7 @@ int main(int argc, char **argv)
         MPI_Recv(buf, 1, type, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
     
+    MPI_Type_free(&type);
+    
     MPI_Finalize();
 }

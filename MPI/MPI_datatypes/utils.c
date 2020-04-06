@@ -91,6 +91,21 @@ range_t *init_range(int start_bufidx, int bufcnt, int repcnt, int *payloads, int
     return r;
 }
 
+void fini_range(range_t *r)
+{
+    int i;
+
+    free(r->outbuf);
+    for(i = 0; i < r->bufcnt; i++){
+        free(r->inbufs[i]);
+    }
+    free(r->payloads);
+    free(r->strides);
+    free(r->insizes);
+    free(r->inbufs);
+    free(r);
+}
+
 void range_fill(range_t *r, char *base_addr, int displs[], int blocklens[], char outbuf[])
 {
     int idx, i, j;
@@ -184,6 +199,21 @@ message_t *message_init(int verbose,
     return m;
 }
 
+void message_finalize(message_t *m)
+{
+    int i;
+
+    for(i=0 ; i < m->ranges_cnt; i++){
+        fini_range(m->ranges[i]);
+    }
+
+    free(m->displs);
+    free(m->blens);
+    free(m->outbuf);
+    free(m->ranges);
+    free(m);    
+}
+
 void create_mpi_index(int verbose,
                       char *base_ptr, int rangeidx, int bufidx, int blockidx,
                       message_desc_t *scenario, int desc_cnt,
@@ -194,6 +224,13 @@ void create_mpi_index(int verbose,
     MPI_Type_commit(type);
     *m_out = m;
 }
+
+void destroy_mpi_index(MPI_Datatype *type, message_t *m)
+{
+    MPI_Type_free(type);
+    message_finalize(m);
+}
+
 
 void prepare_to_recv(message_t *m)
 {
@@ -299,7 +336,7 @@ int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
             	    printf("Attempt: %d\n", k);
             	}
             	
-                if(verbose){
+                if( verbose && !recv_use_dt ) {
                     printf("[%d] Received: ", j);
                     for(i=0; i < m[j]->outlen && i < 256; i++){
                         printf("%c", recv_buf[j][i]);
@@ -312,6 +349,11 @@ int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
             }
         }
         verbose = 0;
+    }
+
+    for(j = 0; j < ndts; j++){
+        free(recv_buf[j]);
+        destroy_mpi_index(&type[j], m[j]);
     }
     
     return rc;

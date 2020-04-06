@@ -34,7 +34,7 @@ function exec_test()
 	if [ ! -f "$e" ]; then
 	    continue
 	fi
-	    DBGFLAGS="-x ARTPOL_USE_HW=1 -x ARTPOL_DEBUG_RANK=1 "
+#	    DBGFLAGS="-x ARTPOL_USE_HW=1 -x ARTPOL_DEBUG_RANK=1 "
         cmd="$MPIRUN -np 2 --map-by node --mca pml ucx -x UCX_TLS=rc_x --mca btl self $DBGFLAGS $e"
         echo "Executing: $cmd"
         $cmd
