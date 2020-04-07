@@ -4,24 +4,11 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-int myrank = -1;
-
-int get_pmix_rank()
+void do_freeze_detail(int want, int rank, int size)
 {
-    if( myrank < 0 ){
-        char *ptr = getenv("PMIX_RANK");
-        myrank = atoi(ptr);
-    }
-    return myrank;
-}
-
-void do_freeze_detail(int want)
-{
-    if(0 != get_pmix_rank()){
-        return;
-    }
     int break_flg = 0;
-    while(want && !break_flg) {
+    
+    while((rank < size/2) && want && !break_flg) {
         sleep(1);
     }
 }
@@ -33,9 +20,13 @@ int main(int argc, char **argv)
     int rank, size;
     int j, i, buf, flag = 0;
 
+
     MPI_Init(&argc, &argv);
+
+
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
+
 
     if( size%2 != 0){
         if(rank == 0){
@@ -54,29 +45,34 @@ int main(int argc, char **argv)
         num_unexp = atoi(argv[1]);
         num_iter = atoi(argv[2]);
     }
+
+
     if(argc >= 4) {
         freeze = atoi(argv[3]);
     }
 
+
     if(argc >= 5) {
         freeze_detail = atoi(argv[4]);
     }
+
 
     if( rank == 0 ){
         printf("Start unexpected test: iters=%d, sends=%d; freeze=%d, freeze_det=%d\n",
                num_iter, num_unexp, freeze, freeze_detail);
     }
 
-    do_freeze_detail(freeze_detail);
+
+    do_freeze_detail(freeze_detail, rank, size);
 
     int my_peer = (rank + size/2) % size;
+    MPI_Request *reqs = calloc(num_unexp, sizeof(MPI_Request));
+
     for(j = 0; j < num_iter; j++){
-        MPI_Request *reqs = calloc(num_unexp, sizeof(MPI_Request));
         if(rank < (size/2)){
             for(i=0; i < num_unexp; i++) {
                 MPI_Isend(&buf, 1, MPI_INT, my_peer, 0, MPI_COMM_WORLD, &reqs[i]);
             }
-
             struct timeval tv;
             gettimeofday(&tv, NULL);
             double start = tv.tv_sec + 1E-6 * tv.tv_usec, end;
@@ -93,12 +89,12 @@ int main(int argc, char **argv)
             }
         }
         MPI_Waitall(num_unexp, reqs, MPI_STATUSES_IGNORE);
-        do_freeze_detail(freeze_detail);
+        do_freeze_detail(freeze_detail, rank, size);
     }
-
     while(freeze) {
         sleep(1);
     }
 
     MPI_Finalize();
+    return 0;
 }
