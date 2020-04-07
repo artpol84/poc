@@ -4,20 +4,47 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+int myrank = -1;
+
+int get_pmix_rank()
+{
+    if( myrank < 0 ){
+        char *ptr = getenv("PMIX_RANK");
+        myrank = atoi(ptr);
+    }
+    return myrank;
+}
+
+void do_freeze_detail(int want)
+{
+    if(0 != get_pmix_rank()){
+        return;
+    }
+    int break_flg = 0;
+    while(want && !break_flg) {
+        sleep(1);
+    }
+}
+
+
 int main(int argc, char **argv)
 {
-    int num_unexp = 0, num_iter = 0, freeze = 0;
-    int rank, j, i, buf, flag = 0;
+    int num_unexp = 0, num_iter = 0, freeze = 0, freeze_detail = 0;
+    int rank, size;
+    int j, i, buf, flag = 0;
 
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    if(rank > 2){
+    if( size%2 != 0){
         if(rank == 0){
-            printf("This test only supports 2 processes\n");
+            printf("This test only supports even number of processes\n");
             MPI_Finalize();
             exit(0);
         }
+        MPI_Finalize();
+        exit(0);
     }
 
     if(argc < 3){
@@ -31,15 +58,22 @@ int main(int argc, char **argv)
         freeze = atoi(argv[3]);
     }
 
+    if(argc >= 5) {
+        freeze_detail = atoi(argv[4]);
+    }
+
     if( rank == 0 ){
         printf("Start unexpected test: iters=%d, sends=%d\n", num_iter, num_unexp);
     }
 
+    do_freeze_detail(freeze_detail);
+
+    int my_peer = (rank + size/2) % size;
     for(j = 0; j < num_iter; j++){
         MPI_Request *reqs = calloc(num_unexp, sizeof(MPI_Request));
         if(rank == 0){
             for(i=0; i < num_unexp; i++) {
-                MPI_Isend(&buf, 1, MPI_INT, 1, 0, MPI_COMM_WORLD, &reqs[i]);
+                MPI_Isend(&buf, 1, MPI_INT, my_peer, 0, MPI_COMM_WORLD, &reqs[i]);
             }
             struct timeval tv;
             gettimeofday(&tv, NULL);
@@ -59,10 +93,11 @@ int main(int argc, char **argv)
             }
             MPI_Barrier(MPI_COMM_WORLD);
             for(i=0; i < num_unexp; i++) {
-                MPI_Irecv(&buf, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &reqs[i]);
+                MPI_Irecv(&buf, 1, MPI_INT, my_peer, 0, MPI_COMM_WORLD, &reqs[i]);
             }
         }
         MPI_Waitall(num_unexp, reqs, MPI_STATUSES_IGNORE);
+        do_freeze_detail(freeze_detail);
     }
 
     while(freeze) {
