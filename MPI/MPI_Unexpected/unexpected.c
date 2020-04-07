@@ -63,7 +63,8 @@ int main(int argc, char **argv)
     }
 
     if( rank == 0 ){
-        printf("Start unexpected test: iters=%d, sends=%d\n", num_iter, num_unexp);
+        printf("Start unexpected test: iters=%d, sends=%d; freeze=%d, freeze_det=%d\n",
+               num_iter, num_unexp, freeze, freeze_detail);
     }
 
     do_freeze_detail(freeze_detail);
@@ -71,10 +72,11 @@ int main(int argc, char **argv)
     int my_peer = (rank + size/2) % size;
     for(j = 0; j < num_iter; j++){
         MPI_Request *reqs = calloc(num_unexp, sizeof(MPI_Request));
-        if(rank == 0){
+        if(rank < (size/2)){
             for(i=0; i < num_unexp; i++) {
                 MPI_Isend(&buf, 1, MPI_INT, my_peer, 0, MPI_COMM_WORLD, &reqs[i]);
             }
+
             struct timeval tv;
             gettimeofday(&tv, NULL);
             double start = tv.tv_sec + 1E-6 * tv.tv_usec, end;
@@ -84,13 +86,7 @@ int main(int argc, char **argv)
                 end = tv.tv_sec + 1E-6 * tv.tv_usec;
             } while(!flag && ((end - start) < 5.0));
             MPI_Barrier(MPI_COMM_WORLD);
-        } else{
-            if ( 0 ) {
-                int delay = 1;
-                while(delay) {
-                    sleep(1);
-                }
-            }
+        } else {
             MPI_Barrier(MPI_COMM_WORLD);
             for(i=0; i < num_unexp; i++) {
                 MPI_Irecv(&buf, 1, MPI_INT, my_peer, 0, MPI_COMM_WORLD, &reqs[i]);
