@@ -9,6 +9,9 @@ basic: $(TARGETS_BASIC)
 all: basic
 extra: $(TARGETS_ALL)
 
+test_msc: test.c 1nmsc.c 1nmsc.h lock.h Makefile
+	$(CC) -o test_msc $(CFLAGS) $(LDFLAGS) -DMY_MSC=1 test.c 1nmsc.c
+
 test_flock: test.c flock.c flock.h lock.h Makefile
 	$(CC) -o test_flock $(CFLAGS) $(LDFLAGS) -DMY_FLOCK=1 test.c flock.c
 
