@@ -38,7 +38,7 @@ int shared_rwlock_init(my_lock_t *lock) /* rank != 0 */
 {
     MPI_Comm_rank(MPI_COMM_WORLD, &lock_idx);
     lock_idx--;
-    static __thread msc_list_t my_record;
+    my_records = calloc(1, sizeof(*my_records));
 }
 
 inline void shared_rwlock_lock(msc_lock_t *lock)
@@ -133,4 +133,3 @@ int shared_rwlock_fin(my_lock_t *lock)
     }
 */
 }   
-
