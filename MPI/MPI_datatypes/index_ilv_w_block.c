@@ -37,4 +37,6 @@ int main(int argc, char **argv)
                    scenario, sizeof(scenario)/sizeof(scenario[0]), 1,
                    RECV_TYPE, FORCE_UNEXP);
     MPI_Finalize();
+
+    return 0;
 }
