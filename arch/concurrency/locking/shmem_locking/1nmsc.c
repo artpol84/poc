@@ -16,6 +16,7 @@
 //static int init_by_me = 0;
 static int lock_num = 0;
 static int lock_idx = 0;
+static msc_list_t *my_records = NULL;
 
 int shared_rwlock_create(my_lock_t *lock) /* rank == 0 */
 {
