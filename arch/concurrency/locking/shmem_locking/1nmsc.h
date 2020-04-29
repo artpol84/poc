@@ -9,6 +9,7 @@ typedef struct msc_list_s {
 
 typedef struct msc_lock_s {
     msc_list_t *head;
+   msc_list_t cli_record;
 } msc_lock_t;
 
 /*
