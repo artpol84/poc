@@ -31,7 +31,7 @@ int shared_rwlock_create(my_lock_t *lock) /* rank == 0 */
     }
 
     init_by_me = 1; /* ? rank 0 will be write ? */
-    static __thread msc_list_t my_record; /* ? when threads should create my_record ? */
+    my_records = calloc(lock_num, sizeof(*my_records));
 }
 
 int shared_rwlock_init(my_lock_t *lock) /* rank != 0 */
