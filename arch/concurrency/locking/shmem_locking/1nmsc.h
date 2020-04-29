@@ -26,6 +26,8 @@ typedef struct  {
 
 typedef struct {
     msc_lock_t locks[512];
+    /*cache line alignment */
+    msc_list_t srv_records[512];
 } nlock_t;
 
 #define my_lock_t nlock_t
