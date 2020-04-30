@@ -60,6 +60,7 @@ all: $(UTILS) $(TESTS)
 	$(MPICC) -o index_2x_ilv_rcvdt_exp   -DRECV_TYPE=1 -g index_2x_ilv.c $(UTILS) 
 	$(MPICC) -o index_2x_ilv_rcvdt_unexp -DRECV_TYPE=1 -DFORCE_UNEXP=1 -g index_2x_ilv.c $(UTILS) 
 	$(MPICC) -o vector -g vector.c
+	$(MPICC) -o vector_cnt -g vector_cnt.c
 	$(MPICC) -o vector_rcache -g vector_rcache.c
 	$(MPICC) -o index_perf -g index_perf.c $(UTILS) 
 	$(MPICC) -o index_two_dts -g index_two_dts.c $(UTILS) 
@@ -69,4 +70,4 @@ all: $(UTILS) $(TESTS)
 
 
 clean:
-	rm -f *_offs* *_rcvdt_* vector vector_rcache index_perf index_two_dts index_zcopy_multi index_repro_bug1
+	rm -f *_offs* *_rcvdt_* vector vector_cnt vector_rcache index_perf index_two_dts index_zcopy_multi index_repro_bug1
