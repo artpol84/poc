@@ -35,7 +35,7 @@ function exec_test()
 	    continue
 	fi
 #	    DBGFLAGS="-x ARTPOL_USE_HW=1 -x ARTPOL_DEBUG_RANK=1 "
-        cmd="$MPIRUN -np 2 --map-by node --mca pml ucx -x UCX_TLS=rc_x --mca btl self $DBGFLAGS $e"
+        cmd="$MPIRUN -np 2 --map-by node --mca pml ucx -x UCX_TLS=rc_x --mca btl self -x OMPI_WANT_UMR=1 $DBGFLAGS $e"
         echo "Executing: $cmd"
         $cmd
     done
@@ -44,7 +44,9 @@ function exec_test()
 tests="vector vector_cnt vector_cnt2 vector_rcache vector_2d index_plain index_regular_str index_regular_ilv index_ilv_w_block index_2x_ilv index_2x_str index_mixed1 index_two_dts index_zcopy_multi index_repro_bug1"
 #tests="vector 9index_plain index_regular_str index_regular_ilv index_ilv_w_block index_2x_ilv index_2x_str index_mixed1 index_two_dts index_zcopy_multi"
 
-export OMPI_WANT_UMR=1
+if [ -z "$MPIRUN" ]; then
+    export MPIRUN=mpirun
+fi
 
 for t in $tests; do
     exec_test $t
