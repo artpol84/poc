@@ -23,10 +23,12 @@ OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 #include <mpi.h>
 
-#define NCOUNT  2
-#define NBLOCKS 512
+#define NCOUNT  4
+#define NBLOCKS 2
 #define BSIZE 2
 #define SSIZE 4
 #define SBUFSIZE (NBLOCKS * SSIZE * NCOUNT)
@@ -35,14 +37,18 @@ OF THE POSSIBILITY OF SUCH DAMAGE.
 int main(int argc, char **argv)
 {
     int buf[SBUFSIZE];
-    MPI_Datatype type;
+    MPI_Datatype vtype, type;
     int rank;
     MPI_Request req;
     
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    MPI_Type_vector((NBLOCKS), BSIZE, SSIZE, MPI_INT, &type);
+    MPI_Type_vector((NBLOCKS), BSIZE, SSIZE, MPI_INT, &vtype);
+    MPI_Type_commit(&vtype);
+
+    // Resize to ensure regular striging with multi-count sends
+    MPI_Type_create_resized(vtype, 0, sizeof(int) * SSIZE * NBLOCKS, &type);
     MPI_Type_commit(&type);
     
     if( rank == 0 ){
@@ -53,20 +59,47 @@ int main(int argc, char **argv)
         for(i=0; i < SBUFSIZE; i++){
             buf[i] = i+1;
         }
+
         MPI_Isend(buf, NCOUNT, type, 1, 0, MPI_COMM_WORLD, &req);
         MPI_Wait(&req, MPI_STATUS_IGNORE);
     } else {
-        int i;
+        int i, j;
+
         MPI_Recv(buf, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        MPI_Recv(buf,RBUFSIZE, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        memset(buf, 0, sizeof(buf));
+        MPI_Recv(buf,NCOUNT, type, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         printf("Received: ");
-        for(i=0; i<RBUFSIZE; i++){
+        for(i=0; i<SBUFSIZE; i++){
             printf("%d ", buf[i]);
+        }
+        // Verify
+        for(i=0; i < NCOUNT; i++){
+            for(j = 0; j < NBLOCKS; j++) {
+                int start = (SSIZE * NBLOCKS) * i + SSIZE * j;
+                int k;
+                // First verify the block data
+                for(k = 0; k < BSIZE; k++){
+                    if( buf[start + k] != (start + k + 1) ) {
+                        printf("Mismatch in block area: expect %d, got %d\n",
+                                (start + k + 1), buf[start + k]);
+                        exit(1);
+                    }
+                }
+                // Next, verify that remaining is 0s
+                for(; k < SSIZE; k++){
+                    if( buf[start + k] != 0 ) {
+                        printf("Mismatch in stride area: expect %d, got %d\n",
+                                0, buf[start + k]);
+                        exit(1);
+                    }
+                }
+            }
         }
         printf("\n");
     }
 
     MPI_Type_free(&type);
+    MPI_Type_free(&vtype);
     
     MPI_Finalize();
 }
