@@ -25,6 +25,7 @@ OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 #include <mpi.h>
 #include <assert.h>
+#include <stdlib.h>
 #include "utils.h"
 
 #define TAG_SYNC 10
@@ -334,6 +335,7 @@ int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
             for(j=0; j < ndts; j++){
                 if( verify_recv(m[j], recv_buf[j], recv_use_dt) ){
             	    printf("Attempt: %d\n", k);
+            	    exit(1);
             	}
             	
                 if( verbose && !recv_use_dt ) {

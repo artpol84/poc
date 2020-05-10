@@ -37,7 +37,7 @@ function exec_test()
 #	    DBGFLAGS="-x ARTPOL_USE_HW=1 -x ARTPOL_DEBUG_RANK=1 "
         cmd="$MPIRUN -np 2 --map-by node --mca pml ucx -x UCX_TLS=rc_x --mca btl self -x OMPI_WANT_UMR=1 $DBGFLAGS $e"
         echo "Executing: $cmd"
-        $cmd
+        $cmd || exit 1
     done
 }
 
