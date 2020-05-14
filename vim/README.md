@@ -1,6 +1,6 @@
 ## VIM cheatsheet
 
-### FILE MANAGER**
+### FILE MANAGER
 * ":edit <dirname>" To open the file explorer
 * ":bd" - delete current buffer to close it
 * "ls" list buffers
