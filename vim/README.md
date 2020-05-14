@@ -25,7 +25,7 @@
 ### SEARCH
 * "/string" - forward search
 * ?string - backward search
-* "*" - search the word under cursor
+* "*" (fwd) / "#" (backwd) - search the word under cursor
 
 ### SUBSTITUTE
 * :1,$s/colour/color/gi - Substite "colour" with "color" from line "1" till "$" (EOF)
