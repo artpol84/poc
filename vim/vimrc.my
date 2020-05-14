@@ -1,0 +1,35 @@
+" References:
+" [1] https://www.techrepublic.com/article/vi-for-programmers-part-1/
+" [2] https://www.techrepublic.com/article/vi-for-programmers-part-2/
+" [3] https://www.embeddedarm.com/blog/tag-jumping-in-a-codebase-using-ctags-and-cscope-in-vim/
+
+set exrc
+set number
+
+" See [1]
+set autoindent
+syntax enable
+set smartindent
+set tabstop=4
+set shiftwidth=4
+set expandtab
+
+colorscheme elflord
+set secure
+
+" See [3]
+" mkdir ~/.vim/plugins
+" cd ~/.vim/plugins
+" wget http://cscope.sourceforge.net/cscope_maps.vim
+set nocscopeverbose
+source ~/.vim/plugins/cscope_maps.vim
+
+"execute pathogen#infect()
+"autocmd vimenter * NERDTree
+
+nnoremap <C-J> <C-W><C-J>
+nnoremap <C-K> <C-W><C-K>
+nnoremap <C-L> <C-W><C-H>
+nnoremap <C-H> <C-W><C-L>
+
+filetype plugin indent on
