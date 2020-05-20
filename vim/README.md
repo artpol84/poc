@@ -12,6 +12,12 @@
 * ":undolist" 
 * Copy-past: "v" to start selecting; "d" to cut/"y" to copy; "P" to past before/"p" paste after cursor.
 * "Ctrl-w" remove the whole word (in insert mode)
+* Search/replace [[link](https://vim.fandom.com/wiki/Search_and_replace)]: `[%]s/search/replace/[flags]`
+  * `%` search in all lines (search the current line otherwise)
+  * flags:
+    * `g` - global flag (change each occurence in the line)
+    * `c` - ask for confirmation
+    * `i` - case insensitive
 
 ### WINDOWS
 * ":sp" - Split horisontaly
