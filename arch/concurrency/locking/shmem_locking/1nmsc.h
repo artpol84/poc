@@ -20,7 +20,7 @@ typedef struct  {
 } nlock_elem_int_t;
 */
 typedef struct  {
-    msc_lock_t lock;
+    msc_lock_t e;
     char padding[64 - sizeof(msc_lock_t)];
 } align_lock_t;
 
