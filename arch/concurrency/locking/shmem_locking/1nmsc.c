@@ -23,30 +23,40 @@ int shared_rwlock_create(my_lock_t *lock) /* rank == 0 */
     int i;
     MPI_Comm_size(MPI_COMM_WORLD, &lock_num);
     lock_num--;
-    if( sizeof(lock->locks) / sizeof(lock->locks[0]) * 2 < lock_num ) {
+    if( sizeof(lock->locks) / sizeof(lock->locks[0]) * 2 < lock_num ) { // "*2" ??
         printf("Too many processes, cannot allocate enough locks\n");
         MPI_Abort(MPI_COMM_WORLD, 0);
     }
+    // my_records = calloc(lock_num, sizeof(*my_records));
     for(i = 0; i < lock_num; i++) {
-        lock->head = NULL;
+        lock->locks[i].e.head = NULL;
+        lock->locks[i].e.cli_record.next = NULL;
+        lock->locks[i].e.svr_record.next = NULL;
     }
-
+    
+    MPI_Comm_rank(MPI_COMM_WORLD, &lock_idx);
+    lock_idx--;
     init_by_me = 1; /* ? rank 0 will be write ? */
-    my_records = calloc(lock_num, sizeof(*my_records));
 }
 
 int shared_rwlock_init(my_lock_t *lock) /* rank != 0 */
 {
     MPI_Comm_rank(MPI_COMM_WORLD, &lock_idx);
     lock_idx--;
-    my_records = calloc(1, sizeof(*my_records));
+    /* my_records = calloc(1, sizeof(*my_records)); */
 }
 
-inline void shared_rwlock_lock(msc_lock_t *lock)
+inline void shared_rwlock_lock(msc_lock_t *msc_lock)
 {
+    if (lock_idx != 0) // (!init_by_me)
+        my_record = &msc_lock->cli_record;
+//        my_record = &lock->locks[lock_idx].e.cli_record;
+    else 
+        my_record = &msc_lock->srv_record;
+    
     msc_list_t *prev;
-    my_record.next = NULL;
-    prev = (msc_list_t *)atomic_swap((int64_t*)&lock->head, (int64_t)&my_record);
+//    my_record.next = NULL;
+    prev = (msc_list_t *)atomic_swap((int64_t*)&msc_lock->head, (int64_t)&my_record);
 
     if( NULL == prev ) {
         // lock is taken, no one else is waiting
@@ -77,20 +87,25 @@ inline void shared_rwlock_lock(msc_lock_t *lock)
 
 void shared_rwlock_rlock(my_lock_t *lock)
 {
-    shared_rwlock_lock(lock->locks[lock_idx]);
+    shared_rwlock_lock(lock->locks[lock_idx].e);
 }
 
 void shared_rwlock_wlock(my_lock_t *lock)
 {
     int i;
 
-    for(i=0; i<lock_num; i++) {
-        shared_rwlock_lock(lock->locks[i]);
+    for(i = 0; i < lock_num; i++) {
+        shared_rwlock_lock(lock->locks[i].e);
     }
 }
 
 void shared_rwlock_ulock(msc_lock_t *lock)
 {
+    if (lock_idx != 0) // (!init_by_me)
+        my_record = &msc_lock->cli_record;
+    else 
+        my_record = &msc_lock->srv_record;
+    
     if( CAS((int64_t*)&lock->head, (int64_t)&my_record, (int64_t)NULL) ) {
         // No one elase approached the lock after this thread
         return;
@@ -115,11 +130,11 @@ void shared_rwlock_unlock(my_lock_t *lock)
 {
     int i;
     if( init_by_me ){
-        for(i=0; i<lock_num; i++) {
-            shared_rwlock_ulock(lock->locks[i]);
+        for(i = 0; i < lock_num; i++) {
+            shared_rwlock_ulock(lock->locks[i].e);
         }
     } else {
-        shared_rwlock_ulock(lock->locks[lock_idx]);
+        shared_rwlock_ulock(lock->locks[lock_idx].e);
     }
 }
 
