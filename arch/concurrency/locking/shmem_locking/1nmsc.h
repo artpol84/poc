@@ -1,5 +1,6 @@
 #ifndef MY_MSC_H
 #define MY_MSC_H
+#include <stdint.h>
 //#include <pthread.h>
 
 typedef struct msc_list_s {
