@@ -46,7 +46,7 @@
 #endif
 
 #if (MY_MSC == 1)
-#include "msc_lock.h"
+#include "1nmsc.h"
 #endif
 
 int shared_rwlock_create(my_lock_t *lock);
