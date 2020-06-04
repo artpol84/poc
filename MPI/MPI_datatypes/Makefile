@@ -27,7 +27,7 @@ MPICC ?= mpicc
 UTILS_SRC = utils.c
 UTILS = $(UTILS_SRC) utils.h
 
-TESTS = index_ilv_w_block.c index_mixed1.c index_plain.c index_regular_str.c index_regular_ilv.c vector.c vector_cnt.c vector_cnt2.c vector_rcache.c vector_2d.c  index_2x_str.c index_2x_ilv.c index_repro_bug1.c 
+TESTS = index_ilv_w_block.c index_mixed1.c index_plain.c index_regular_str.c index_regular_ilv.c vector.c vector_cnt.c vector_cnt2.c vector_rcache.c vector_2d.c  index_2x_str.c index_2x_ilv.c index_repro_bug1.c res_usage.c
 
 all: $(UTILS) $(TESTS) 
 	$(MPICC) -o index_ilv_w_block_offs0 -DBASE_RANGE=0 -g index_ilv_w_block.c $(UTILS) 
@@ -69,7 +69,8 @@ all: $(UTILS) $(TESTS)
 	$(MPICC) -o index_zcopy_multi_offs0 -g index_zcopy_multi.c $(UTILS) 
 	$(MPICC) -o index_zcopy_multi_rcvdt_exp   -DRECV_TYPE=1 -g index_zcopy_multi.c $(UTILS) 
 	$(MPICC) -o index_zcopy_multi_rcvdt_unexp -DRECV_TYPE=1 -DFORCE_UNEXP=1 -g index_zcopy_multi.c $(UTILS) 
+	$(MPICC) -o res_usage -g res_usage.c $(UTILS)
 
 
 clean:
-	rm -f *_offs* *_rcvdt_* vector vector_2d vector_cnt vector_cnt2 vector_rcache index_perf index_two_dts index_zcopy_multi index_repro_bug1
+	rm -f *_offs* *_rcvdt_* vector vector_2d vector_cnt vector_cnt2 vector_rcache index_perf index_two_dts index_zcopy_multi index_repro_bug1 res_usage
