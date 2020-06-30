@@ -86,9 +86,14 @@ void create_mpi_index(int verbose,
 #define FORCE_UNEXP 0
 #endif
 
+#define WANT_VERIFICATION 1
+#define NO_VERIFICATION 1
+
+
 
 int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
                    message_desc_t *scenario, int desc_cnt,
-                   int ndts, int recv_use_dt, int force_unexp);
+                   int ndts, int recv_use_dt, int force_unexp,
+                   int want_verification);
 
 

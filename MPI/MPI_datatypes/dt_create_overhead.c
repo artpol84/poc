@@ -22,23 +22,38 @@ OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISE
 OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-
 #include <stdio.h>
 #include <mpi.h>
 #include "utils.h"
+#include <time.h>
+
+#define GET_TS() ({                         \
+    struct timespec ts;                     \
+    double ret = 0;                         \
+    clock_gettime(CLOCK_MONOTONIC, &ts);    \
+    ret = ts.tv_sec + 1E-9*ts.tv_nsec;      \
+    ret;                                    \
+})
+
 
 int main(int argc, char **argv)
 {
+    int i, rank;
     message_desc_t scenario[] = {
-        { 1, 1, {1}, {1} },
-        { 1, 1, {2}, {2} },
-        { 1, 1, {4}, {4} },
-        { 1, 1, {6}, {6} }
+        { 1, 32, {1024}, {2048} }
     };
     MPI_Init(&argc, &argv);
-    test_mpi_index(NULL, BASE_RANGE, BASE_BUF, BASE_IDX,
-                   scenario, sizeof(scenario)/sizeof(scenario[0]), 1,
-                   RECV_TYPE, FORCE_UNEXP, WANT_VERIFICATION);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    double start = GET_TS();
+    for(i = 0; i < 1024; i++) {
+        test_mpi_index(NULL, 0, 0, 0,
+                       scenario, sizeof(scenario)/sizeof(scenario[0]),
+                       1, RECV_TYPE, FORCE_UNEXP, NO_VERIFICATION);
+    }
+    double stop = GET_TS();
+
+    printf("%d: latency = %lf\n", rank, stop - start);
     MPI_Finalize();
 
     return 0;

@@ -21,8 +21,8 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-MPICC ?= mpicc
-#MPICC ?= /home/artpol/sandbox/openmpi-3.1.3/bin/mpicc
+#MPICC ?= mpicc
+MPICC ?= /home/artpol/sandbox/openmpi-3.1.3/bin/mpicc
 
 UTILS_SRC = utils.c
 UTILS = $(UTILS_SRC) utils.h
@@ -59,6 +59,7 @@ all: $(UTILS) $(TESTS)
 	$(MPICC) -o index_2x_ilv_offsM -DBASE_RANGE=1 -g index_2x_ilv.c $(UTILS) 
 	$(MPICC) -o index_2x_ilv_rcvdt_exp   -DRECV_TYPE=1 -g index_2x_ilv.c $(UTILS) 
 	$(MPICC) -o index_2x_ilv_rcvdt_unexp -DRECV_TYPE=1 -DFORCE_UNEXP=1 -g index_2x_ilv.c $(UTILS) 
+	$(MPICC) -o dt_create_overhead -g dt_create_overhead.c $(UTILS)
 	$(MPICC) -o vector -g vector.c
 	$(MPICC) -o vector_cnt -g vector_cnt.c
 	$(MPICC) -o vector_cnt2 -g vector_cnt2.c

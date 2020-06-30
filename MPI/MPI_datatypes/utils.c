@@ -268,7 +268,7 @@ static int verify_recv(message_t *m, char *recv_buf, int recv_use_dt)
 
 int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
                    message_desc_t *scenario, int desc_cnt,
-                   int ndts, int recv_use_dt, int unexp)
+                   int ndts, int recv_use_dt, int unexp, int want_verification)
 {
     MPI_Datatype type[ndts];
     int rank;
@@ -317,7 +317,9 @@ int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
             }
 
             for(j=0; j<ndts; j++){
-                prepare_to_recv(m[j]);
+                if( want_verification ){
+                    prepare_to_recv(m[j]);
+                }
                 if(!recv_use_dt) {
                     MPI_Irecv(recv_buf[j], m[j]->outlen, MPI_CHAR, 0, TAG_DATA,
                               MPI_COMM_WORLD, &reqs[j]);
@@ -332,20 +334,25 @@ int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
             }
             MPI_Waitall(ndts, reqs, MPI_STATUSES_IGNORE);
 
+            if(!want_verification){
+                /* skip verification steps */
+                continue;
+            }
+
             for(j=0; j < ndts; j++){
                 if( verify_recv(m[j], recv_buf[j], recv_use_dt) ){
-            	    printf("Attempt: %d\n", k);
-            	    exit(1);
-            	}
-            	
+                    printf("Attempt: %d\n", k);
+                    exit(1);
+                }
+
                 if( verbose && !recv_use_dt ) {
                     printf("[%d] Received: ", j);
                     for(i=0; i < m[j]->outlen && i < 256; i++){
                         printf("%c", recv_buf[j][i]);
                     }
                     if( i < m[j]->outlen){
-                	printf(" ...");
-            	    }
+                        printf(" ...");
+                    }
                     printf("\n");
                 }
             }
