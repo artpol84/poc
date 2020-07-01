@@ -87,7 +87,7 @@ void create_mpi_index(int verbose,
 #endif
 
 #define WANT_VERIFICATION 1
-#define NO_VERIFICATION 1
+#define NO_VERIFICATION 0
 
 
 
