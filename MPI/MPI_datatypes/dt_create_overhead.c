@@ -39,17 +39,29 @@ OF THE POSSIBILITY OF SUCH DAMAGE.
 int main(int argc, char **argv)
 {
     int i, rank;
+/*
     message_desc_t scenario[] = {
-        { 1, 32, {1024}, {2048} }
+        { 4, 800, {256, 256, 256, 256}, {2048, 2048, 2048, 2048} }
     };
+*/
+    message_desc_t scenario[] = {
+        { 2, 100, {256, 256, 256}, {2048, 2048, 2048} }
+    };
+
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+    if( rank == 1 ){
+	int delay = 0;
+	while(delay){
+	    sleep(1);
+	}
+    }
     double start = GET_TS();
-    for(i = 0; i < 1024; i++) {
+    for(i = 0; i < 64; i++) {
         test_mpi_index(NULL, 0, 0, 0,
                        scenario, sizeof(scenario)/sizeof(scenario[0]),
-                       1, RECV_TYPE, FORCE_UNEXP, NO_VERIFICATION);
+                       8, RECV_TYPE, FORCE_UNEXP, NO_VERIFICATION);
     }
     double stop = GET_TS();
 

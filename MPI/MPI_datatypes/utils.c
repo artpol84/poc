@@ -290,7 +290,7 @@ int test_mpi_index(char *base_ptr, int rangeidx, int bufidx, int blockidx,
     if(0 == rank) {
         printf("FLAGSL RECV_DT=%d, FORCE_UNEXP=%d\n", recv_use_dt, unexp);
     }
-    for(k = 0; k < 5; k++) {
+    for(k = 0; k < 1; k++) {
         if( rank == 0 ){
             MPI_Send(sync, 1, MPI_CHAR, 1, TAG_SYNC, MPI_COMM_WORLD);
             if(!unexp){

@@ -21,6 +21,8 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #!/bin/bash
 
+ulimit -c unlimited
+
 function exec_test()
 {
     if [ -f "./$1" ]; then
@@ -39,7 +41,8 @@ function exec_test()
     done
 }
 
-tests="vector vector_cnt vector_cnt2 vector_rcache vector_2d index_plain index_regular_str index_regular_ilv index_ilv_w_block index_2x_ilv index_2x_str index_mixed1 index_two_dts index_zcopy_multi index_repro_bug1"
+tests="vector vector_cnt vector_cnt2 vector_rcache vector_2d index_plain index_regular_str index_regular_ilv index_ilv_w_block index_2x_ilv index_2x_str index_mixed1 index_two_dts index_zcopy_multi index_repro_bug1 dt_create_overhead"
+#tests="dt_create_overhead"
 #tests="vector 9index_plain index_regular_str index_regular_ilv index_ilv_w_block index_2x_ilv index_2x_str index_mixed1 index_two_dts index_zcopy_multi"
 
 if [ -z "$MPIRUN" ]; then
