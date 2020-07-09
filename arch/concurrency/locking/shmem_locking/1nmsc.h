@@ -1,10 +1,6 @@
 #ifndef MY_MSC_H
 #define MY_MSC_H
 #include <stdint.h>
-<<<<<<< HEAD
-=======
-//#include <pthread.h>
->>>>>>> 2c694d3eb2c830b7af0957800af6825c4b184704
 
 typedef struct msc_list_s {
     volatile uint32_t locked;
