@@ -10,142 +10,121 @@
 #include <errno.h>
 #include <assert.h>
 #include "x86.h"
+#include <unistd.h>
 
 #define compiler_fence() { asm volatile ("" : : : "memory"); }
 
-//static int init_by_me = 0;
-static int lock_num = 0;
-static int lock_idx = 0;
-static msc_list_t *my_records = NULL;
+static int init_by_me = 0;
+static int lock_num = 0; 
+static int lock_idx = 0; // one lock for every reader
+static uint32_t record_idx = 0; // each lock include two records for client (reader) and server (writer)
 
 int shared_rwlock_create(my_lock_t *lock) /* rank == 0 */
 {
     int i;
     MPI_Comm_size(MPI_COMM_WORLD, &lock_num);
     lock_num--;
-    if( sizeof(lock->locks) / sizeof(lock->locks[0]) * 2 < lock_num ) { // "*2" ??
+
+    if( sizeof(lock->locks) / sizeof(lock->locks[0]) * 2 < lock_num ) {
         printf("Too many processes, cannot allocate enough locks\n");
         MPI_Abort(MPI_COMM_WORLD, 0);
     }
-    // my_records = calloc(lock_num, sizeof(*my_records));
+
     for(i = 0; i < lock_num; i++) {
-        lock->locks[i].e.head = NULL;
-        lock->locks[i].e.cli_record.next = NULL;
-        lock->locks[i].e.svr_record.next = NULL;
+        lock->locks[i].e.head = 0;
+        lock->locks[i].e.record[0].next = 0;
+        lock->locks[i].e.record[1].next = 0;
     }
     
-    MPI_Comm_rank(MPI_COMM_WORLD, &lock_idx);
-    lock_idx--;
-    init_by_me = 1; /* ? rank 0 will be write ? */
+    init_by_me = 1; /* rank 0 will be write */
+    record_idx = 2; // 1 - client for read, 0 - for nobody as next
 }
 
 int shared_rwlock_init(my_lock_t *lock) /* rank != 0 */
 {
     MPI_Comm_rank(MPI_COMM_WORLD, &lock_idx);
     lock_idx--;
-    /* my_records = calloc(1, sizeof(*my_records)); */
+    record_idx = 1; // 2 - server for write, 0 - for nobody as next
 }
 
 inline void shared_rwlock_lock(msc_lock_t *msc_lock)
 {
-    if (lock_idx != 0) // (!init_by_me)
-        my_record = &msc_lock->cli_record;
-//        my_record = &lock->locks[lock_idx].e.cli_record;
-    else 
-        my_record = &msc_lock->srv_record;
+    uint32_t prev_idx;
+    (&msc_lock->record[record_idx - 1])->next = 0;
     
-    msc_list_t *prev;
-//    my_record.next = NULL;
-    prev = (msc_list_t *)atomic_swap((int64_t*)&msc_lock->head, (int64_t)&my_record);
-
-    if( NULL == prev ) {
-        // lock is taken, no one else is waiting
+    prev_idx = (uint32_t)atomic_swap((int64_t*)&msc_lock->head, (int64_t)record_idx);
+    if( 0 == prev_idx ) {
         return;
     }
-    my_record.locked = 1;
+
+    (&msc_lock->record[record_idx-1])->locked = 1;
+
     compiler_fence();
-    prev->next = &my_record;
+    (&msc_lock->record[prev_idx-1])->next = record_idx;
     compiler_fence();
+
     /* TODO: Find out
      * For some reasons "volatile" specifier of the structure field
      * was unable to prevent compiler from optimizing this part of the
      * code resulting in a deadlock
      */
-    volatile uint32_t *flag = &my_record.locked;
-    while(*flag) {
-        asm volatile (
-            "label%=:\n"
-            "   pause\n"
-            "   cmp $0, (%[flag])\n"
-            "   jne label%=\n"
-            :
-            : [flag] "r" (flag)
-            : "memory");
+    volatile uint32_t *flag = &((&msc_lock->record[record_idx - 1])->locked);
+    while(*flag){
+        asm volatile ("pause" : : : "memory");
     }
-    // lock is taken
 }
 
 void shared_rwlock_rlock(my_lock_t *lock)
 {
-    shared_rwlock_lock(lock->locks[lock_idx].e);
+    shared_rwlock_lock(&lock->locks[lock_idx].e);
 }
 
 void shared_rwlock_wlock(my_lock_t *lock)
 {
     int i;
-
     for(i = 0; i < lock_num; i++) {
-        shared_rwlock_lock(lock->locks[i].e);
+        shared_rwlock_lock(&lock->locks[i].e);
     }
 }
 
-void shared_rwlock_ulock(msc_lock_t *lock)
+void shared_rwlock_ulock(msc_lock_t *msc_lock)
 {
-    if (lock_idx != 0) // (!init_by_me)
-        my_record = &msc_lock->cli_record;
-    else 
-        my_record = &msc_lock->srv_record;
-    
-    if( CAS((int64_t*)&lock->head, (int64_t)&my_record, (int64_t)NULL) ) {
+    if( CAS((int64_t*)(&msc_lock->head), (int64_t)record_idx, (int64_t)NULL) ) {
         // No one elase approached the lock after this thread
         return;
     }
 
     // Wait for the next record initialization
-    volatile uint64_t *flag = (uint64_t*)&my_record.next;
+    volatile uint32_t *flag = &((&msc_lock->record[record_idx-1])->next);
     while(!(*flag)){
         asm volatile ("pause" : : : "memory");
     }
 
     // Release the next one in a queue
+    uint32_t next_idx = (&msc_lock->record[record_idx-1])->next;
     compiler_fence();
-    my_record.next->locked =0;
-    //asm volatile ("sfence" : : : "memory");
+    (&msc_lock->record[next_idx-1])->locked = 0;
+    asm volatile ("sfence" : : : "memory");
+
     // lock is released
-    my_record.next = NULL;
-    my_record.locked = 0;
+    (&msc_lock->record[record_idx-1])->next = 0;
+    (&msc_lock->record[record_idx-1])->locked = 0; //?
 }
 
 void shared_rwlock_unlock(my_lock_t *lock)
 {
     int i;
     if( init_by_me ){
-        for(i = 0; i < lock_num; i++) {
-            shared_rwlock_ulock(lock->locks[i].e);
+    	    for(i = 0; i < lock_num; i++) {
+            shared_rwlock_ulock(&lock->locks[i].e);
         }
     } else {
-        shared_rwlock_ulock(lock->locks[lock_idx].e);
+        shared_rwlock_ulock(&lock->locks[lock_idx].e);
     }
 }
+
 
 int shared_rwlock_fin(my_lock_t *lock)
 {
     /* nothing to do */
-/*    int i;
-    if( init_by_me ){
-        for(i = 0; i < lock_num; i++) {
-            pthread_mutex_destroy(&lock->locks[i].e.lock);
-        }
-    }
-*/
 }   

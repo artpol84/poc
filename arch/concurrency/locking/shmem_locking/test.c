@@ -83,8 +83,10 @@ void parse_cmdline(int argc, char **argv)
 {
     int i;
     for(i=1; i < argc; i++){
+//        printf("Parsed option %s\n", argv[i]);
         if( !strcmp(argv[i], "-v") ){
             verbose = 1;
+//            printf("Verbose = %d \n", verbose);
             continue;
         }
         if( !strcmp(argv[i], "-h") ){
@@ -299,7 +301,7 @@ void verification(struct my *data)
             MPI_Barrier(MPI_COMM_WORLD);
             shared_rwlock_unlock(&data->lock);
         }
-    }    
+    } 
 }
 
 void wronly_test(struct my* data, double *perf)
@@ -485,8 +487,9 @@ int main(int argc, char **argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     
-    parse_cmdline(argc, argv);
-
+    if (rank == 0){
+	parse_cmdline(argc, argv);
+    }
 
     {
         int delay = 0;
@@ -502,6 +505,7 @@ int main(int argc, char **argv)
         data->counter1 = 0;
         data->counter2 = 0;
         shared_rwlock_create(&data->lock);
+	VERBOSE_OUT(verbose, "Shared Seg Created\n");
     }
     init_time = GET_TS() - init_time;
 
@@ -516,6 +520,10 @@ int main(int argc, char **argv)
     init_time += GET_TS() - start;
 
     calibrate_sleep(data);
+    if (0 == rank){
+	VERBOSE_OUT(verbose, "Calibration Test Passed\n");
+    }
+
 
     // Correctness verification
 #if (!defined (MY_PTHREAD_MUTEX) || ( MY_PTHREAD_MUTEX == 0 ))
@@ -523,14 +531,18 @@ int main(int argc, char **argv)
      * time can get into the region - so the won't be able to
      * call barrier together
      */
-     verification(data);
+    verification(data);
+    if (0 == rank)VERBOSE_OUT(verbose, "Verification Test Passed\n");
 #endif
     
 
     wronly_test(data, &wronly_lock_ovh);
+    if (0 == rank)    VERBOSE_OUT(verbose, "Write Only Test Passed\n");
     rdonly_test(data, &rdonly_lock_ovh);
+    if (0 == rank)    VERBOSE_OUT(verbose, "Read Only Test Passed\n");
     if( !nordwr ){
         rdwr_test(data, &rlock_cnt, &rdwr_wr_time, &rdwr_wr_lock_ovh);
+	if (0 == rank)	VERBOSE_OUT(verbose, "Read/Write Test Passed\n");
     }
 
     MPI_Barrier(MPI_COMM_WORLD);

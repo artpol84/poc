@@ -26,7 +26,7 @@ if [ "$output" = 1 ]; then
 fi
 shift 3
 
-outfile=${binary}_${procs}_${pam_by}.log 
+outfile=${binary}_${procs}_${map_by}.log 
 rep_bindings="--report-bindings"
 if [ "$verbose" = 0 ]; then
     outfile=/dev/null
