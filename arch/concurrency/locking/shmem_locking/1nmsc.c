@@ -87,7 +87,7 @@ void shared_rwlock_wlock(my_lock_t *lock)
     }
 }
 
-void shared_rwlock_ulock(msc_lock_t *msc_lock)
+static inline void _msc_unlock(msc_lock_t *msc_lock)
 {
     if( CAS((int64_t*)(&msc_lock->head), (int64_t)record_idx, (int64_t)NULL) ) {
         // No one elase approached the lock after this thread
