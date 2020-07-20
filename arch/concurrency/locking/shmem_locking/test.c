@@ -504,7 +504,7 @@ int main(int argc, char **argv)
         data->counter1 = 0;
         data->counter2 = 0;
         shared_rwlock_create(&data->lock);
-	VERBOSE_OUT(verbose, "Shared Seg Created\n");
+	  VERBOSE_OUT(verbose, "Shared Seg Created\n");
     }
     init_time = GET_TS() - init_time;
 
