@@ -83,7 +83,6 @@ void parse_cmdline(int argc, char **argv)
 {
     int i;
     for(i=1; i < argc; i++){
-//        printf("Parsed option %s\n", argv[i]);
         if( !strcmp(argv[i], "-v") ){
             verbose = 1;
 //            printf("Verbose = %d \n", verbose);
