@@ -85,7 +85,6 @@ void parse_cmdline(int argc, char **argv)
     for(i=1; i < argc; i++){
         if( !strcmp(argv[i], "-v") ){
             verbose = 1;
-//            printf("Verbose = %d \n", verbose);
             continue;
         }
         if( !strcmp(argv[i], "-h") ){
@@ -486,10 +485,8 @@ int main(int argc, char **argv)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     
-    if (rank == 0){
-	parse_cmdline(argc, argv);
-    }
-
+    parse_cmdline(argc, argv);
+    
     {
         int delay = 0;
         while( delay ){
@@ -504,7 +501,6 @@ int main(int argc, char **argv)
         data->counter1 = 0;
         data->counter2 = 0;
         shared_rwlock_create(&data->lock);
-	  VERBOSE_OUT(verbose, "Shared Seg Created\n");
     }
     init_time = GET_TS() - init_time;
 
@@ -531,17 +527,27 @@ int main(int argc, char **argv)
      * call barrier together
      */
     verification(data);
-    if (0 == rank)VERBOSE_OUT(verbose, "Verification Test Passed\n");
+    if (0 == rank){
+	VERBOSE_OUT(verbose, "Verification Test Passed\n");
+    }
 #endif
     
 
     wronly_test(data, &wronly_lock_ovh);
-    if (0 == rank)    VERBOSE_OUT(verbose, "Write Only Test Passed\n");
+    if (0 == rank){
+	VERBOSE_OUT(verbose, "Write Only Test Passed\n");
+    }
+    
     rdonly_test(data, &rdonly_lock_ovh);
-    if (0 == rank)    VERBOSE_OUT(verbose, "Read Only Test Passed\n");
+    if (0 == rank){
+	VERBOSE_OUT(verbose, "Read Only Test Passed\n");
+    }
+    
     if( !nordwr ){
         rdwr_test(data, &rlock_cnt, &rdwr_wr_time, &rdwr_wr_lock_ovh);
-	if (0 == rank)	VERBOSE_OUT(verbose, "Read/Write Test Passed\n");
+	if (0 == rank){
+	    VERBOSE_OUT(verbose, "Read/Write Test Passed\n");
+	}
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
