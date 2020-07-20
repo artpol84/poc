@@ -47,7 +47,7 @@ int shared_rwlock_init(my_lock_t *lock) /* rank != 0 */
     record_idx = 1; // 2 - server for write, 0 - for nobody as next
 }
 
-inline void shared_rwlock_lock(msc_lock_t *msc_lock)
+inline void _msc_lock(msc_lock_t *msc_lock)
 {
     uint32_t prev_idx;
     (&msc_lock->record[record_idx - 1])->next = 0;
@@ -76,14 +76,14 @@ inline void shared_rwlock_lock(msc_lock_t *msc_lock)
 
 void shared_rwlock_rlock(my_lock_t *lock)
 {
-    shared_rwlock_lock(&lock->locks[lock_idx].e);
+    _msc_lock(&lock->locks[lock_idx].e);
 }
 
 void shared_rwlock_wlock(my_lock_t *lock)
 {
     int i;
     for(i = 0; i < lock_num; i++) {
-        shared_rwlock_lock(&lock->locks[i].e);
+        _msc_lock(&lock->locks[i].e);
     }
 }
 
@@ -116,10 +116,10 @@ void shared_rwlock_unlock(my_lock_t *lock)
     int i;
     if( init_by_me ){
     	for(i = 0; i < lock_num; i++) {
-            shared_rwlock_ulock(&lock->locks[i].e);
+            _msc_unlock(&lock->locks[i].e);
         }
     } else {
-        shared_rwlock_ulock(&lock->locks[lock_idx].e);
+        _msc_unlock(&lock->locks[lock_idx].e);
     }
 }
 
