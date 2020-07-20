@@ -30,11 +30,7 @@ int shared_rwlock_create(my_lock_t *lock) /* rank == 0 */
         MPI_Abort(MPI_COMM_WORLD, 0);
     }
 
-    for(i = 0; i < lock_num; i++) {
-        lock->locks[i].e.head = 0;
-        lock->locks[i].e.record[0].next = 0;
-        lock->locks[i].e.record[1].next = 0;
-    }
+    memset(lock->locks, 0, sizeof(lock->locks));
     
     init_by_me = 1; /* rank 0 will be write */
     record_idx = 2; // 1 - client for read, 0 - for nobody as next
