@@ -516,7 +516,7 @@ int main(int argc, char **argv)
 
     calibrate_sleep(data);
     if (0 == rank){
-	VERBOSE_OUT(verbose, "Calibration Test Passed\n");
+        VERBOSE_OUT(verbose, "Calibration Test Passed\n");
     }
 
 
