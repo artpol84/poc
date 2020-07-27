@@ -540,7 +540,7 @@ int main(int argc, char **argv)
     
     rdonly_test(data, &rdonly_lock_ovh);
     if (0 == rank){
-	VERBOSE_OUT(verbose, "Read Only Test Passed\n");
+        VERBOSE_OUT(verbose, "Read Only Test Passed\n");
     }
     
     if( !nordwr ){
