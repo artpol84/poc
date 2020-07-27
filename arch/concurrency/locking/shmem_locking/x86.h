@@ -11,8 +11,8 @@
 
 static inline int CAS(int64_t *addr, int64_t oldval, int64_t newval)
 {
-   unsigned char ret;
-   __asm__ __volatile__ (
+    unsigned char ret;
+    __asm__ __volatile__ (
                        SMPLOCK "cmpxchgq %3,%2   \n\t"
                                "sete     %0      \n\t"
                        : "=qm" (ret), "+a" (oldval), "+m" (*addr)
@@ -20,7 +20,7 @@ static inline int CAS(int64_t *addr, int64_t oldval, int64_t newval)
                        : "memory", "cc"
                        );
 
-   return (int) ret;
+    return (int) ret;
 }
 
 static inline int64_t atomic_swap(int64_t *addr, int64_t newval)
