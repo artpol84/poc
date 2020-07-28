@@ -47,7 +47,7 @@ inline void _msc_lock(msc_lock_t *msc_lock)
 {
     uint32_t prev_idx;
     (&msc_lock->record[record_idx - 1])->next = 0;
-    
+
     prev_idx = (uint32_t)atomic_swap((int64_t*)&msc_lock->head, (int64_t)record_idx);
     if( 0 == prev_idx ) {
         return;
@@ -111,7 +111,7 @@ void shared_rwlock_unlock(my_lock_t *lock)
 {
     int i;
     if( init_by_me ){
-    	for(i = 0; i < lock_num; i++) {
+        for(i = 0; i < lock_num; i++) {
             _msc_unlock(&lock->locks[i].e);
         }
     } else {
