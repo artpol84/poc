@@ -272,8 +272,8 @@ void verification(struct my *data)
         VERBOSE_OUT(verbose, "Data correctness verification\n");
         for(i=0; i<100; i++){
             if( (i % 10) == 9 ){
-                 VERBOSE_OUT(verbose, "Step #%d%%\n", (i+1));
-                 fflush(stdout);
+                VERBOSE_OUT(verbose, "Step #%d%%\n", (i+1));
+                fflush(stdout);
             }
             shared_rwlock_wlock(&data->lock);
             data->counter1++;
@@ -313,7 +313,7 @@ void wronly_test(struct my* data, double *perf)
         VERBOSE_OUT(verbose, "Performance evaluation: write only\n");
         for(i=0; i<WRONLY_REPS; i++){
             if( ((i + 1) % PERCENT(WRONLY_REPS,10)) == 0 ){
-                 VERBOSE_OUT(verbose, "Step #%d%%\n", (i+1)/PERCENT(WRONLY_REPS,1) );
+                VERBOSE_OUT(verbose, "Step #%d%%\n", (i+1)/PERCENT(WRONLY_REPS,1) );
             }
             start = GET_TS();
             shared_rwlock_wlock(&data->lock);
@@ -343,8 +343,8 @@ void rdonly_test(struct my* data, struct stats_dbl *perf)
         do {
             counter = data->counter1;
             if( ((counter + 1) / PERCENT(RDONLY_REPS,10)) > prev_step ){
-                 VERBOSE_OUT(verbose, "Step #%d%%\n", (counter+1)/PERCENT(RDONLY_REPS,1) );
-                 prev_step = (counter + 1) / PERCENT(RDONLY_REPS,10);
+                VERBOSE_OUT(verbose, "Step #%d%%\n", (counter+1)/PERCENT(RDONLY_REPS,1) );
+                prev_step = (counter + 1) / PERCENT(RDONLY_REPS,10);
             }
         } while( data->counter1 < (RDONLY_REPS - 1) );
     } else {
@@ -375,7 +375,7 @@ void rdonly_test(struct my* data, struct stats_dbl *perf)
 }
 
 void rdwr_test(struct my *data, struct stats_dbl *rlocks, 
-                double *wr_time_out, double *wr_lock_time_out)
+               double *wr_time_out, double *wr_lock_time_out)
 {
     int cur_count = 0;
     int prev_barrier = 0;
@@ -401,16 +401,16 @@ void rdwr_test(struct my *data, struct stats_dbl *rlocks,
         wr_start = GET_TS();
         for(i=0; i<WR_REPS; i++){
             if( ((i + 1) % PERCENT(WR_REPS,10)) == 0 ){
-                 VERBOSE_OUT(verbose, "Step #%d%%\n", (i+1)/PERCENT(WR_REPS, 1));
+                VERBOSE_OUT(verbose, "Step #%d%%\n", (i+1)/PERCENT(WR_REPS, 1));
             }
             lock_start = GET_TS();
             shared_rwlock_wlock(&data->lock);
             lock_time += GET_TS() - lock_start;
-            
+
             data->counter1++;
             data->counter2++;
             cur_count++;
-            
+
             lock_start = GET_TS();
             shared_rwlock_unlock(&data->lock);
             lock_time += GET_TS() - lock_start;
@@ -443,7 +443,6 @@ void rdwr_test(struct my *data, struct stats_dbl *rlocks,
         rd_delay = time / rlock_cnt;
         rd_delay_tot = time;
     }
-
 
     if( rank == 0 ){
         rlock_cnt = 0;
@@ -484,9 +483,9 @@ int main(int argc, char **argv)
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
-    
+
     parse_cmdline(argc, argv);
-    
+
     {
         int delay = 0;
         while( delay ){
@@ -528,30 +527,29 @@ int main(int argc, char **argv)
      */
     verification(data);
     if (0 == rank){
-	VERBOSE_OUT(verbose, "Verification Test Passed\n");
+        VERBOSE_OUT(verbose, "Verification Test Passed\n");
     }
 #endif
-    
 
     wronly_test(data, &wronly_lock_ovh);
     if (0 == rank){
-	VERBOSE_OUT(verbose, "Write Only Test Passed\n");
+        VERBOSE_OUT(verbose, "Write Only Test Passed\n");
     }
     
     rdonly_test(data, &rdonly_lock_ovh);
     if (0 == rank){
         VERBOSE_OUT(verbose, "Read Only Test Passed\n");
     }
-    
+
     if( !nordwr ){
         rdwr_test(data, &rlock_cnt, &rdwr_wr_time, &rdwr_wr_lock_ovh);
-	if (0 == rank){
-	    VERBOSE_OUT(verbose, "Read/Write Test Passed\n");
-	}
+        if (0 == rank){
+            VERBOSE_OUT(verbose, "Read/Write Test Passed\n");
+        }
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
-    
+
     if( rank == 0){
         if( print_header ){
             printf("readers\tWO:ovh\tWO:lk/s\tRO:ovh[avg/min/max]\tRO:lk/s");
