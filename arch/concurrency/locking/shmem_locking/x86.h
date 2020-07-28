@@ -26,7 +26,8 @@ static inline int CAS(int64_t *addr, int64_t oldval, int64_t newval)
 static inline int64_t atomic_swap(int64_t *addr, int64_t newval)
 {
     int64_t oldval;
-    __asm__ __volatile__("xchgq %1, %0" 
+    __asm__ __volatile__(
+                "xchgq %1, %0   \n\t" 
             :"=r" (oldval), "+m" (*addr) 
             :"0" (newval) 
             :"memory");
