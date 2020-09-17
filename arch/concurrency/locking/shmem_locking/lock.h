@@ -1,7 +1,11 @@
 #ifndef MY_LOCK_H
 #define MY_LOCK_H
 
+<<<<<<< HEAD
 #if ((MY_FLOCK + MY_PTHREAD + MY_PTHREAD_MUTEX + MY_DUMMY + MY_C11_ATOMICS + MY_GCC_BUILDIN + MY_PTHREAD_N + MY_PTHREAD_N2 + MY_PTHREAD_N1 + MY_PTHREAD_N1S + MY_PTHREAD_NS1 + MY_MSC) != 1 )
+=======
+#if ((MY_FLOCK + MY_PTHREAD + MY_PTHREAD_MUTEX + MY_DUMMY + MY_C11_ATOMICS + MY_GCC_BUILDIN + MY_PTHREAD_N + MY_PTHREAD_N2 + MY_PTHREAD_N1 + MY_PTHREAD_N1S + MY_PTHREAD_NS1 + MY_MCS + MY_NBLOCK) != 1 )
+>>>>>>> efimov
 #error "Use one and only one locking type at the time"
 #endif
 
@@ -45,8 +49,17 @@
 #include "c11_atomics.h"
 #endif
 
+<<<<<<< HEAD
 #if (MY_MSC == 1)
 #include "1nmsc.h"
+=======
+#if (MY_MCS == 1)
+#include "1nmcs.h"
+#endif
+
+#if (MY_NBLOCK == 1)
+#include "nblock.h"
+>>>>>>> efimov
 #endif
 
 int shared_rwlock_create(my_lock_t *lock);

@@ -2,15 +2,27 @@ CC = mpicc
 CFLAGS = -O3 -g
 LDFLAGS = -lrt
 
+<<<<<<< HEAD
 TARGETS_BASIC = test_flock test_pthread test_pthread_prio test_pthread_mutex test_dummy test_buildin_spin test_buildin_yield test_pthread_nlocks test_2nmutex test_1nmutex test_1nmutex+signal test_1nmutex+1nsignal test_msc
+=======
+TARGETS_BASIC = test_flock test_pthread test_pthread_prio test_pthread_mutex test_dummy test_buildin_spin test_buildin_yield test_pthread_nlocks test_2nmutex test_1nmutex test_1nmutex+signal test_1nmutex+1nsignal test_mcs test_nblock
+>>>>>>> efimov
 TARGETS_ALL = $(TARGETS_BASIC) test_c11_atomics  test_c11_atomics_spin  test_c11_atomics_yield
 
 basic: $(TARGETS_BASIC)
 all: basic
 extra: $(TARGETS_ALL)
 
+<<<<<<< HEAD
 test_msc: test.c 1nmsc.c 1nmsc.h lock.h Makefile
 	$(CC) -o test_msc $(CFLAGS) $(LDFLAGS) -DMY_MSC=1 test.c 1nmsc.c
+=======
+test_nblock: test.c nblock.c nblock.h lock.h Makefile
+	$(CC) -o test_nblock $(CFLAGS) $(LDFLAGS) -DMY_NBLOCK=1 test.c nblock.c
+
+test_mcs: test.c 1nmcs.c 1nmcs.h lock.h Makefile
+	$(CC) -o test_mcs $(CFLAGS) $(LDFLAGS) -DMY_MCS=1 test.c 1nmcs.c
+>>>>>>> efimov
 
 test_flock: test.c flock.c flock.h lock.h Makefile
 	$(CC) -o test_flock $(CFLAGS) $(LDFLAGS) -DMY_FLOCK=1 test.c flock.c

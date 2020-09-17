@@ -4,7 +4,6 @@ module load hpcx-gcc
 
 # NOTE: Use of rankfile helps with locality here. Without it a high level of perf 'cache-misses' was observed
 
-
 test=$1
 echo "Test = $test"
 
@@ -18,7 +17,7 @@ get_header()
 execute_test()
 {
     np=$1
-    
+
     cum_wo_oprate=0
     cum_ro_oprate=0
     cum_rw_wlck_lat=0
