@@ -2,6 +2,7 @@
 " [1] https://www.techrepublic.com/article/vi-for-programmers-part-1/
 " [2] https://www.techrepublic.com/article/vi-for-programmers-part-2/
 " [3] https://www.embeddedarm.com/blog/tag-jumping-in-a-codebase-using-ctags-and-cscope-in-vim/
+" [4] Linux Kernel coding style https://github.com/gregkh/kernel-coding-style
 
 set exrc
 set number
@@ -33,3 +34,7 @@ nnoremap <C-L> <C-W><C-H>
 nnoremap <C-H> <C-W><C-L>
 
 filetype plugin indent on
+
+" See [4]
+source ~/.vim/plugins/linuxsty.vim
+let g:linuxsty_patterns = [ "/home/artpol/WORK/linux-priv/" ]
