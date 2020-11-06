@@ -54,3 +54,8 @@
 #### cscope
 * "cscope -Rb" To generate the database
 * "Ctrl-\ s" To search for the symbols invocations
+ 
+ ### CODE Tools
+ #### Comment the block
+for commenting lines 66-70: `:66,70s/^/#`
+for uncommenting these lines: `:66,70s/^#/`
