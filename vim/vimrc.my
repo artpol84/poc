@@ -3,6 +3,7 @@
 " [2] https://www.techrepublic.com/article/vi-for-programmers-part-2/
 " [3] https://www.embeddedarm.com/blog/tag-jumping-in-a-codebase-using-ctags-and-cscope-in-vim/
 " [4] Linux Kernel coding style https://github.com/gregkh/kernel-coding-style
+" [5] https://sites.google.com/site/vimcctree/help
 
 set exrc
 set number
@@ -39,3 +40,6 @@ filetype plugin on
 " See [4]
 source ~/.vim/plugins/linuxsty.vim
 let g:linuxsty_patterns = [ "/home/artpol/WORK/linux-priv/" ]
+
+" See [5]
+source ~/.vim/plugins/cctree.vim
