@@ -78,7 +78,7 @@ int* bruck_allgather(int rank,int node_count, int *block, int block_size, int *b
 	    send_size = send_size + 1;
 	    buffer_send = realloc(buffer_send, send_size * sizeof(int));
 	    buffer_send[send_size - 1] = offset;
-	    debug_print("rank - %d prepend offset = %d\n", rank, buffer_send[send_size - 1]);
+	    debug_print("rank - %d append offset = %d\n", rank, buffer_send[send_size - 1]);
 	}
 
 	send_rank = (rank + node_count - (1 << step)) % node_count;
