@@ -92,7 +92,6 @@ int* bruck_allgather(int rank,int node_count, int *block, int block_size, int *b
 	buffer_recv = malloc(recv_size * sizeof(int));
 	MPI_Irecv(buffer_recv, recv_size, MPI_INT, recv_rank, 0, MPI_COMM_WORLD, &req[1]);
 	MPI_Waitall(2, req, status);
-	//debug_print("rank - %d error0 = %d error1 = %d\n", rank, status[0].MPI_ERROR, status[1].MPI_ERROR);
 	uncutten_print(rank, buffer_recv, recv_size, "recv_buffer");
 
 	if (lsb & (1 << step)) {
