@@ -47,11 +47,13 @@ int* bruck_allgather(int rank,int node_count, int *block, int block_size, int *b
     int remain, lsb, steps;
     int *buffer = NULL;
     int *buffer_recv = NULL;
+    int *buffer_send = NULL;
     double tmp;
     int offset = 0;
     int index, step;
     int flag;
     int recv_size = 0;
+    int send_size = 0;
     int send_rank, recv_rank;
     MPI_Status status[2];
     MPI_Request req[2];
@@ -76,16 +78,20 @@ int* bruck_allgather(int rank,int node_count, int *block, int block_size, int *b
 
     *buffer_size = block_size;
     for (step = 0; step < steps; step++){
+	send_size = *buffer_size;
+	buffer_send = malloc((send_size) * sizeof(int));
+	memcpy(buffer_send, buffer, send_size * sizeof(int));
+
 	if (remain & (1 << step)) {
-	    *buffer_size = *buffer_size + 1;
-	    buffer = realloc(buffer, (*buffer_size) * sizeof(int));
-	    buffer[*buffer_size - 1] = offset;
-	    debug_print("rank - %d prepend offset = %d\n", rank, buffer[*buffer_size - 1]);
+	    send_size = send_size + 1;
+	    buffer_send = realloc(buffer_send, send_size * sizeof(int));
+	    buffer_send[send_size - 1] = offset;
+	    debug_print("rank - %d prepend offset = %d\n", rank, buffer_send[send_size - 1]);
 	}
 
 	send_rank = (rank + node_count - (1 << step)) % node_count;
 	recv_rank = (rank + (1 << step)) % node_count;
-	MPI_Isend(buffer, *buffer_size, MPI_INT, send_rank, 0, MPI_COMM_WORLD, &req[0]);
+	MPI_Isend(buffer_send, send_size, MPI_INT, send_rank, 0, MPI_COMM_WORLD, &req[0]);
 	flag = 0;
 	while(!flag){
 	    MPI_Iprobe(recv_rank, 0, MPI_COMM_WORLD, &flag, &status[0]);
@@ -112,6 +118,7 @@ int* bruck_allgather(int rank,int node_count, int *block, int block_size, int *b
 	buffer = realloc(buffer, (*buffer_size + recv_size) * sizeof(int));
 	memcpy(buffer + (*buffer_size), buffer_recv, recv_size * sizeof(int));
 	*buffer_size = *buffer_size + recv_size;
+	free(buffer_send);
 	free(buffer_recv);
     }
     
