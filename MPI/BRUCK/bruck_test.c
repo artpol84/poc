@@ -88,7 +88,6 @@ int* bruck_allgather(int rank,int node_count, int *block, int block_size, int *b
 	while(!flag){
 	    MPI_Iprobe(recv_rank, 0, MPI_COMM_WORLD, &flag, &status[0]);
 	}
-	//MPI_Probe(recv_rank, 0, MPI_COMM_WORLD, &status[0]);
 	MPI_Get_count(&status[0], MPI_INT, &recv_size);
 	buffer_recv = malloc(recv_size * sizeof(int));
 	MPI_Irecv(buffer_recv, recv_size, MPI_INT, recv_rank, 0, MPI_COMM_WORLD, &req[1]);
