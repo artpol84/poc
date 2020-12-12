@@ -13,16 +13,8 @@
 
 int least_sign_bit(int number)
 {
-    unsigned int lsb = 1;
-
-    if (number == 0) return 0;
-
-    while (!(number&1)){
-	number >>= 1;
-	lsb <<= 1;
-    }
-
-    return lsb;
+    unsigned int number_wo_lsb = number & (number - 1);
+    return number - number_wo_lsb;
 }
 
 int uncutten_print(int rank, int *mass, int size, char *start_string)
