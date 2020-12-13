@@ -5,11 +5,17 @@
 #include <malloc.h>
 #include <time.h>
 #include <math.h>
+#include <assert.h>
 
 #define BUF_LEN 5
 
 #define debug_print(fmt, ...) \
         do { if (DEBUG) fprintf(stdout, fmt, ##__VA_ARGS__); } while (0)
+
+int intcmp(const void *param1, const void *param2)
+{
+    return *(int *)param1 - *(int *)param2;
+}
 
 int least_sign_bit(int number)
 {
@@ -140,9 +146,13 @@ int main(int argc, char **argv)
     int rank, size;
     int seed = 0;
     int block_size = 0;
-    int  *block  = NULL;
-    int  *buffer = NULL;
+    int *block  = NULL;
+    int *buffer = NULL;
+    int *buffer_mpi = NULL;
+    int *recvcounts_mpi = NULL;
+    int *disp_mpi = NULL;
     int buffer_size = 0;
+    int buffer_mpi_size = 0;
 
     MPI_Init(&argc,&argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -165,7 +175,37 @@ int main(int argc, char **argv)
 
     uncutten_print(rank, buffer, buffer_size, "rezult buffer");
 
+    MPI_Allreduce(&block_size, &buffer_mpi_size, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    debug_print("rank - %d buffer_size = %d buffer_mpi_size = %d \n", rank, 
+                buffer_size, buffer_mpi_size);
+    assert(buffer_size == buffer_mpi_size);
+    buffer_mpi = malloc(buffer_mpi_size * sizeof(int));
+    recvcounts_mpi = calloc(size, sizeof(int));
+    disp_mpi = calloc(size, sizeof(int));
+
+    MPI_Allgather(&block_size, 1, MPI_INT, recvcounts_mpi, 1, MPI_INT, MPI_COMM_WORLD);
+    uncutten_print(rank, recvcounts_mpi, size, "recvcounts_mpi");
+
+    disp_mpi[0] = 0;
+    for(index = 1; index < size; index ++) {
+        disp_mpi[index] = disp_mpi[index - 1] + recvcounts_mpi[index - 1];
+    }
+    uncutten_print(rank, disp_mpi, size, "disp_mpi");
+
+    MPI_Allgatherv(block, block_size, MPI_INT, buffer_mpi, recvcounts_mpi,
+                    disp_mpi, MPI_INT, MPI_COMM_WORLD);
+    uncutten_print(rank, buffer_mpi, buffer_mpi_size, "result mpi buffer");
+
+    qsort(buffer, buffer_size, sizeof(int), intcmp);
+    qsort(buffer_mpi, buffer_mpi_size, sizeof(int), intcmp);
+    uncutten_print(rank, buffer, buffer_size, "sorted buffer");
+    uncutten_print(rank, buffer_mpi, buffer_mpi_size, "sorted buffer_mpi");
+    assert(!memcmp(buffer, buffer_mpi, buffer_size));
+
     free(block);
     free(buffer);
+    free(buffer_mpi);
+    free(recvcounts_mpi);
+    free(disp_mpi);
     MPI_Finalize();
 }
