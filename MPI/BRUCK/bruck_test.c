@@ -53,7 +53,7 @@ int* bruck_allgather(int rank,int node_count, int *block, int block_size, int *b
     tmp = log2(node_count);
     steps = (int) tmp;
     debug_print("rank %u - step = %u block_size = %d\n", rank, steps, block_size);
-    tmp = pow(2.0, (int)tmp);
+    tmp = 1 << (int)tmp;
     remain = node_count - ((int) tmp);
     debug_print("rank %u - remain = %u\n", rank, remain);
     lsb = least_sign_bit(remain);
