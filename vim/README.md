@@ -7,6 +7,9 @@
 * "b<number>" switch to a buffer
 
 ### EDITING
+* Indentation:
+  * Usee `==` to auto-indent the current line
+  * OR: select with 'v' and use `==` with the selection.
 * "<lineno> + Shift-g" Goto line
 * "<number>u" - undo the last change 
 * ":undolist" 
