@@ -23,6 +23,7 @@ static int _rc_qp_to_rts(ib_context_t *ctx, int is_send, int max_wr_cnt)
         fprintf(stderr, "Couldn't create QP\n");
         return 1;
     }
+    printf("QP #%d\n", ctx->qp->qp_num);
 
     ctx->addr.lqpn = ctx->qp->qp_num;
 
@@ -85,7 +86,7 @@ static int _rc_qp_to_rts(ib_context_t *ctx, int is_send, int max_wr_cnt)
      *  - 7 * 34s = 231s = 3 m
      * [1] https://www.rdmamojo.com/2013/01/12/ibv_modify_qp/
      */
-    qp_modify_attr.timeout            = 23;
+    qp_modify_attr.timeout            = 16;
     qp_modify_attr.retry_cnt          = 7;
 
     if (ibv_modify_qp(ctx->qp, &qp_modify_attr,

@@ -27,7 +27,8 @@ int main(int argc, char *argv[]) {
     init_ctx(ctx, s);
     init_rc_send(ctx);
 
-#define TEXT_MSG "Hello RC :)"
+#define TEXT_MSG \
+"Hello RC :) <filler,filler,filler,filler,filler,filler,filler,filler,filler,filler,filler,filler,f"
     sprintf(ctx->mr_buffer, TEXT_MSG);
     if (send_rc(ctx, strlen(TEXT_MSG))){
         fprintf(stderr, "Failed to send message\n");

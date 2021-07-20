@@ -228,6 +228,7 @@ int recv_loop(ib_context_t *ctx, int is_ud, int cnt)
     int ne, i;
 
 #define MAX_MSG_SIZE 0x100
+    memset(ctx->mr_buffer, 0, MAX_MSG_SIZE * cnt);
 
     for (i = 0; i < cnt; i++) {
         list.addr   = (uint64_t)(ctx->mr_buffer + MAX_MSG_SIZE*i);
@@ -262,7 +263,7 @@ int recv_loop(ib_context_t *ctx, int is_ud, int cnt)
             if (is_ud) {
                 ptr += 40;
             }
-            printf("received: %s\n", ptr);
+            printf("received (#%d == %d): %s\n", i, (int)wc.wr_id, ptr);
         }
 
         i++;
