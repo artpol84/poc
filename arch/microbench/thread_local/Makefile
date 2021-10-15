@@ -1,12 +1,14 @@
 all: test_ex test_so
 
+CC = gcc
+
 test_ex: main.c lib.c  lib.h
-	gcc -o test_ex main.c lib.c -O3 -g -lpthread
+	$(CC) -o test_ex main.c lib.c -O3 -g -lpthread
 
 test_so: main.c lib.c  lib.h
-	gcc -c -Wall -Werror -fpic lib.c
-	gcc -shared -o libtest.so lib.o
-	gcc -o test_so main.c -L. -ltest -Wl,-rpath,$(PWD) -O3 -g -lpthread
+	$(CC) -c -Wall -Werror -fpic -O3 lib.c
+	$(CC) -shared -o libtest.so lib.o
+	$(CC) -o test_so main.c -L. -ltest -Wl,-rpath,$(PWD) -O3 -g -lpthread
 
 clean:
 	rm -f test_so test_ex libtest.so lib.o
