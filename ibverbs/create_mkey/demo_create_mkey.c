@@ -41,7 +41,8 @@ typedef struct {
 #define SEND_CQ 0
 #define RECV_CQ 1
 
-#define USE_IBV 1
+#define USE_DEVX 0
+#define USE_IOVA 0
 
 void create_qp(ib_context_t *ctx)
 {
@@ -162,6 +163,8 @@ void free_mem(ib_context_t *ctx)
     free(ctx->buf);
 }
 
+#if USE_DEVX
+
 void alloc_umem(ib_context_t *ctx)
 {
     ctx->mem_desc.umem = mlx5dv_devx_umem_reg(ctx->ctx, ctx->buf, ctx->size, 0);
@@ -173,7 +176,7 @@ void alloc_umem(ib_context_t *ctx)
 
 void free_umem(ib_context_t *ctx)
 {
-    mlx5dv_devx_umem_reg(ctx->mem_desc.umem);
+    mlx5dv_devx_umem_dereg(ctx->mem_desc.umem);
 }
 
 int create_devx_mr(ib_context_t *ctx)
@@ -234,24 +237,26 @@ void destroy_devx_mr(ib_context_t *ctx)
     }
     free_umem(ctx);
 }
-
+#endif
 
 void create_mr(ib_context_t *ctx, int size)
 {
     alloc_mem(ctx, size);
-#if USE_IBV
-    ctx->mr = ibv_reg_mr(ctx->pd, ctx->buf, size, IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE);
-#else
+#if USE_DEVX
     ctx->mr = create_devx_mr(ctx);
+#elif USE_IOVA
+    ctx->mr = ibv_reg_mr_iova(ctx->pd, ctx->buf, size, 0, IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE);
+#else
+    ctx->mr = ibv_reg_mr(ctx->pd, ctx->buf, size, IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE);
 #endif
 }
 
 void destroy_mr(ib_context_t *ctx)
 {
-#if USE_IBV
-    ibv_dereg_mr(ctx->mr);
-#else
+#if USE_DEVX
     destroy_devx_mr(ctx, size);
+#else
+    ibv_dereg_mr(ctx->mr);
 #endif
     free_mem(ctx);
 }
