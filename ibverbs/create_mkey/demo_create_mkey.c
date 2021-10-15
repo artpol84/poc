@@ -46,7 +46,6 @@ typedef struct {
 
 void create_qp(ib_context_t *ctx)
 {
-   struct ibv_qp_init_attr attr = { 0 };
    struct ibv_port_attr pattrs;
    int i;
 
@@ -59,15 +58,18 @@ void create_qp(ib_context_t *ctx)
    /* Create QPs */
 
    for(i = 0; i < 2; i++) {
-       attr.send_cq = ctx->cqs[i][SEND_CQ];
-       attr.recv_cq = ctx->cqs[i][RECV_CQ];
-       attr.cap.max_send_wr  = MAX_WR;
-       attr.cap.max_recv_wr  = MAX_WR;
-       attr.cap.max_send_sge = MAX_GATHER_ENTRIES;
-       attr.cap.max_recv_sge = MAX_SCATTER_ENTRIES;
-       attr.qp_type = IBV_QPT_RC;
+       struct ibv_qp_init_attr qp_init_attr = { 0 };
 
-       ctx->qp[i] = ibv_create_qp(ctx->pd, &attr);
+       qp_init_attr.sq_sig_all = 1;
+       qp_init_attr.send_cq = ctx->cqs[i][SEND_CQ];
+       qp_init_attr.recv_cq = ctx->cqs[i][RECV_CQ];
+       qp_init_attr.cap.max_send_wr  = MAX_WR;
+       qp_init_attr.cap.max_recv_wr  = MAX_WR;
+       qp_init_attr.cap.max_send_sge = MAX_GATHER_ENTRIES;
+       qp_init_attr.cap.max_recv_sge = MAX_SCATTER_ENTRIES;
+       qp_init_attr.qp_type = IBV_QPT_RC;
+
+       ctx->qp[i] = ibv_create_qp(ctx->pd, &qp_init_attr);
        if (!ctx->qp) {
            fprintf(stderr, "Couldn't create QP\n");
            abort();
@@ -79,7 +81,9 @@ void create_qp(ib_context_t *ctx)
        qp_modify_attr.qp_state        = IBV_QPS_INIT;
        qp_modify_attr.pkey_index      = 0;
        qp_modify_attr.port_num        = ctx->port;
-       qp_modify_attr.qp_access_flags = 0;
+       qp_modify_attr.qp_access_flags = IBV_ACCESS_LOCAL_WRITE |
+                                        IBV_ACCESS_REMOTE_READ |
+                                        IBV_ACCESS_REMOTE_WRITE;
        if (ibv_modify_qp(ctx->qp[i], &qp_modify_attr,
                          IBV_QP_STATE              |
                          IBV_QP_PKEY_INDEX         |
@@ -100,20 +104,20 @@ void create_qp(ib_context_t *ctx)
         qp_modify_attr.dest_qp_num        = ctx->qp[(i+1)%2]->qp_num;
         qp_modify_attr.rq_psn             = 0;
         qp_modify_attr.max_dest_rd_atomic = 1;
-        qp_modify_attr.min_rnr_timer      = 12;
+        qp_modify_attr.min_rnr_timer      = 0x12;
         qp_modify_attr.ah_attr.is_global  = 0;
-        qp_modify_attr.ah_attr.dlid       = pattrs.max_mtu;
+        qp_modify_attr.ah_attr.dlid       = pattrs.lid;
         qp_modify_attr.ah_attr.sl         = 0;
-        qp_modify_attr.ah_attr.src_path_bits	= 0;
+        qp_modify_attr.ah_attr.src_path_bits = 0;
         qp_modify_attr.ah_attr.port_num	= ctx->port;
         if (ibv_modify_qp(ctx->qp[i], &qp_modify_attr,
                           IBV_QP_STATE              |
-                          IBV_QP_AV                 |
                           IBV_QP_PATH_MTU           |
                           IBV_QP_DEST_QPN           |
                           IBV_QP_RQ_PSN             |
                           IBV_QP_MAX_DEST_RD_ATOMIC |
-                          IBV_QP_MIN_RNR_TIMER)) {
+                          IBV_QP_MIN_RNR_TIMER      |
+                          IBV_QP_AV)) {
             fprintf(stderr, "Failed to modify QP[%d] to RTR\n", i);
             abort();
         }
@@ -121,20 +125,11 @@ void create_qp(ib_context_t *ctx)
         /* Move to RTS */
         memset(&qp_modify_attr, 0, sizeof(qp_modify_attr));
         qp_modify_attr.qp_state       = IBV_QPS_RTS;
+        qp_modify_attr.timeout        = 0x12;
+        qp_modify_attr.retry_cnt      = 6;
         qp_modify_attr.rnr_retry      = 7;
         qp_modify_attr.sq_psn         = 0;
         qp_modify_attr.max_rd_atomic  = 1;
-
-        /* Setup the send retry parameters:
-         *  - timeout (see [1] for details on how to calculate)
-         *    $ Value of 23 corresponds to 34 sec
-         *  - retry_cnt (max is 7 times)
-         * Max timeout is (retry_cnt * timeout)
-         *  - 7 * 34s = 231s = 3 m
-         * [1] https://www.rdmamojo.com/2013/01/12/ibv_modify_qp/
-         */
-        qp_modify_attr.timeout            = 16;
-        qp_modify_attr.retry_cnt          = 7;
 
         if (ibv_modify_qp(ctx->qp[i], &qp_modify_attr,
                           IBV_QP_STATE              |
@@ -241,13 +236,19 @@ void destroy_devx_mr(ib_context_t *ctx)
 
 void create_mr(ib_context_t *ctx, int size)
 {
+#if !USE_DEVX
+    int mr_flags = IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_READ | IBV_ACCESS_REMOTE_WRITE;
+#endif
+
     alloc_mem(ctx, size);
+
 #if USE_DEVX
     ctx->mr = create_devx_mr(ctx);
 #elif USE_IOVA
-    ctx->mr = ibv_reg_mr_iova(ctx->pd, ctx->buf, size, 0, IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE);
+
+    ctx->mr = ibv_reg_mr_iova(ctx->pd, ctx->buf, size, 0, mr_flags);
 #else
-    ctx->mr = ibv_reg_mr(ctx->pd, ctx->buf, size, IBV_ACCESS_LOCAL_WRITE | IBV_ACCESS_REMOTE_WRITE);
+    ctx->mr = ibv_reg_mr(ctx->pd, ctx->buf, size, mr_flags);
 #endif
 }
 
