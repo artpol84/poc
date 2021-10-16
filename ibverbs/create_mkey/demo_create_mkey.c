@@ -41,8 +41,13 @@ typedef struct {
 #define SEND_CQ 0
 #define RECV_CQ 1
 
+#ifndef USE_DEVX
 #define USE_DEVX 0
+#endif
+
+#ifndef USE_IOVA
 #define USE_IOVA 0
+#endif
 
 void create_qp(ib_context_t *ctx)
 {
