@@ -28,6 +28,7 @@ typedef struct {
     struct ibv_cq *cqs[2][2];
     struct ibv_qp *qp[2];
     int *buf;
+    uint64_t iova;
     int size;
     ib_mr_t mem_desc;
     struct ibv_mr *mr;
@@ -249,11 +250,13 @@ void create_mr(ib_context_t *ctx, int size)
 
 #if USE_DEVX
     ctx->mr = create_devx_mr(ctx);
+    ctx->iova = 0;
 #elif USE_IOVA
-
     ctx->mr = ibv_reg_mr_iova(ctx->pd, ctx->buf, size, 0, mr_flags);
+    ctx->iova = 0;
 #else
     ctx->mr = ibv_reg_mr(ctx->pd, ctx->buf, size, mr_flags);
+    ctx->iova = (uint64_t)ctx->buf;
 #endif
 }
 
@@ -356,7 +359,7 @@ void test_write(ib_context_t *ctx)
 
     /* prepare the scatter/gather entry */
      memset(&sge, 0, sizeof(sge));
-     sge.addr = (uint64_t)ctx->mr->addr;
+     sge.addr = ctx->iova;
      sge.length = sizeof(int);
      sge.lkey = ctx->mr->lkey;
 
@@ -366,7 +369,7 @@ void test_write(ib_context_t *ctx)
      sr.num_sge = 1;
      sr.opcode = IBV_WR_RDMA_WRITE;
      sr.send_flags = IBV_SEND_SIGNALED;
-     sr.wr.rdma.remote_addr = (uint64_t)ctx->mr->addr + sizeof(int);
+     sr.wr.rdma.remote_addr = ctx->iova + sizeof(int);
      sr.wr.rdma.rkey = ctx->mr->rkey;
 
      if (ibv_post_send(ctx->qp[0], &sr, &bad_wr)) {
