@@ -1,3 +1,6 @@
+## Ref
+https://linuxconfig.org/how-to-move-docker-s-default-var-lib-docker-to-another-directory-on-ubuntu-debian-linux
+
 ## Stop the Docker service
 ```
 [root@example.host RDMO]# systemctl stop docker   
