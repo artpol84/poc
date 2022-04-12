@@ -11,4 +11,7 @@
   * http://download.intel.com/design/PentiumII/applnots/24442201.pdf
 * Cache latencies
   * LMbench http://www.bitmover.com/lmbench/
+* DMA-related technologies 
+  * Wikipedia: https://en.m.wikipedia.org/wiki/Direct_memory_access
+    * DDIO: https://en.m.wikipedia.org/wiki/Direct_memory_access#DDIO
   
