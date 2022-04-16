@@ -3,23 +3,23 @@
 #### List available repositories
 ```
 [root@thor036 ~]# dnf repolist --all
-repo id                                                                                      repo name                                 status
-appstream                                                                                    Rocky Linux 8 - AppStream                 enabled
-appstream-debug                                                                              Rocky Linux 8 - AppStream - Source        disabled
-appstream-source                                                                             Rocky Linux 8 - AppStream - Source        disabled
-baseos                                                                                       Rocky Linux 8 - BaseOS                    enabled
+repo id                     repo name                                 status
+appstream                   Rocky Linux 8 - AppStream                 enabled
+appstream-debug             Rocky Linux 8 - AppStream - Source        disabled
+appstream-source            Rocky Linux 8 - AppStream - Source        disabled
+baseos                      Rocky Linux 8 - BaseOS                    enabled
 ....
 ```
 
 #### Enable/Disable availale repositories
 ```
 [root@thor036 ~]# dnf repolist --enablerepo="epel*,power*,baseos*,devel" --all
-repo id                                                                                      repo name                                 status
-appstream                                                                                    Rocky Linux 8 - AppStream                 enabled
-appstream-debug                                                                              Rocky Linux 8 - AppStream - Source        disabled
-appstream-source                                                                             Rocky Linux 8 - AppStream - Source        disabled
-baseos                                                                                       Rocky Linux 8 - BaseOS                    enabled
-baseos-debug                                                                                 Rocky Linux 8 - BaseOS - Source           enabled
+repo id                     repo name                                 status
+appstream                   Rocky Linux 8 - AppStream                 enabled
+appstream-debug             Rocky Linux 8 - AppStream - Source        disabled
+appstream-source            Rocky Linux 8 - AppStream - Source        disabled
+baseos                      Rocky Linux 8 - BaseOS                    enabled
+baseos-debug                Rocky Linux 8 - BaseOS - Source           enabled
 ````
 
 
