@@ -8,6 +8,9 @@ appstream                   Rocky Linux 8 - AppStream                 enabled
 appstream-debug             Rocky Linux 8 - AppStream - Source        disabled
 appstream-source            Rocky Linux 8 - AppStream - Source        disabled
 baseos                      Rocky Linux 8 - BaseOS                    enabled
+baseos-debug                Rocky Linux 8 - BaseOS - Source           disabled
+baseos-source               Rocky Linux 8 - BaseOS - Source           disabled
+devel                       Rocky Linux 8 - Devel                     disabled
 ....
 ```
 
@@ -20,10 +23,13 @@ appstream-debug             Rocky Linux 8 - AppStream - Source        disabled
 appstream-source            Rocky Linux 8 - AppStream - Source        disabled
 baseos                      Rocky Linux 8 - BaseOS                    enabled
 baseos-debug                Rocky Linux 8 - BaseOS - Source           enabled
+baseos-source               Rocky Linux 8 - BaseOS - Source           enabled
+devel                       Rocky Linux 8 - Devel                     enabled
+...
 ````
 
-
 ### Install debug info for GlibC
+
 #### GDB provides the hint when attaching to the process:
 ```
 yum debuginfo-install \
