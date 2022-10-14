@@ -82,6 +82,7 @@ int create_mr(ib_mr_t *mr, ib_context_t *ctx, void *base, int size)
     mr->ctx = ctx;
     mr->base = base;
     mr->size = size;
+    printf("Creating MR: lkey #%d\n", mr->ib_mr->lkey);
 
     return 0;
 }
