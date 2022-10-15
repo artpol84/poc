@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
     if (s->nqps) {
         cqs = calloc(s->nqps, sizeof(*cqs));
         qps = calloc(s->nqps, sizeof(*qps));
-        for(i = 0; i < s->nmrs; i++) {
+        for(i = 0; i < s->nqps; i++) {
             rc = create_cq(&cqs[i], ctx, CQ_SIZE);
             assert(!rc);
             rc = create_qp(&qps[i], &cqs[i]);
