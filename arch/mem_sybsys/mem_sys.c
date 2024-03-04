@@ -1,6 +1,8 @@
+#include <stdlib.h>
 #include <stdio.h>
-#include <mem_sys.h>
+#include <string.h>
 
+#include <mem_sys.h>
 
 size_t 
 cache_line_size()
@@ -20,7 +22,7 @@ void discover_caches(int *nlevels, size_t cache_sizes[MEMSUBS_CACHE_LEVEL_MAX])
     FILE * p = 0;
     int idx = 0, level = -1;
     size_t size;
-    cache_level_cnt = 0;
+    int cache_level_cnt = 0;
 
     for(idx = 0; ; idx++){
         char path[1024] = "", buf[256];
@@ -71,11 +73,6 @@ void discover_caches(int *nlevels, size_t cache_sizes[MEMSUBS_CACHE_LEVEL_MAX])
         }
         cache_sizes[level-1] = size;
         cache_level_cnt++;
-        if( (level-1) == 0 ){
-            iters[level - 1] = iters_start;
-        } else {
-            iters[level - 1] = iters[level - 2] / 5;
-        }
     }
 
     printf("Cache subsystem (CL size = %zd):\n", cache_line_size());
@@ -85,8 +82,8 @@ void discover_caches(int *nlevels, size_t cache_sizes[MEMSUBS_CACHE_LEVEL_MAX])
 
     /* Add memory into hirarchy */
     cache_sizes[cache_level_cnt] = cache_sizes[cache_level_cnt - 1] * 4;
-    iters[cache_level_cnt] = iters[cache_level_cnt - 1] / 5;
     cache_level_cnt++;
 
+    *nlevels = cache_level_cnt;
     return;
 }
