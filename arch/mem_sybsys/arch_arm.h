@@ -90,6 +90,15 @@ static inline int64_t atomic_swap(int64_t *addr, int64_t newval)
     return _asm_atomic_swap_lse(addr, newval);
 }
 
+static inline uint64_t
+rdtsc()
+{
+    uint64_t ticks;
+    asm volatile("isb" : : : "memory");
+    asm volatile("mrs %0, cntvct_el0" : "=r" (ticks));
+    return ticks;
+}
+
 #endif
 
 /*

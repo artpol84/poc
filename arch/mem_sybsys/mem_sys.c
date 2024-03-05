@@ -1,8 +1,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/types.h>
 
 #include <mem_sys.h>
+
+static size_t flush_array_sz = 0;
+static char *flush_array = NULL;
 
 size_t 
 cache_line_size()
@@ -82,8 +86,23 @@ void discover_caches(int *nlevels, size_t cache_sizes[MEMSUBS_CACHE_LEVEL_MAX])
 
     /* Add memory into hirarchy */
     cache_sizes[cache_level_cnt] = cache_sizes[cache_level_cnt - 1] * 4;
+    flush_array_sz = cache_sizes[cache_level_cnt];
     cache_level_cnt++;
+
+    flush_array = calloc(flush_array_sz, 1);
 
     *nlevels = cache_level_cnt;
     return;
+}
+
+
+void flush_cache()
+{
+    int i;
+    static int count = 0;
+
+    count++;
+    for(i=0; i< flush_array_sz; i++){
+        flush_array[i] = count;
+    }
 }

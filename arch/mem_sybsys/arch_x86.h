@@ -51,6 +51,15 @@ static inline int64_t atomic_swap(int64_t *addr, int64_t newval)
     return oldval;
 }
 
+inline uint64_t
+rdtsc()
+{
+	unsigned long a, d;
+	asm volatile ("rdtsc" : "=a" (a), "=d" (d));
+	return a | ((uint64_t)d << 32);
+}
+
+
 #endif
 
 /*
