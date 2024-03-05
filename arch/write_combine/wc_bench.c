@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <stdlib.h>
+#include <string.h>
 
 /*
 This program tests the performance characteristics of write combining 
@@ -128,7 +128,7 @@ void flush_cache()
 }
 
 
-inline uint64_t
+static inline uint64_t
 rdtsc()
 {
 	unsigned long a, d;

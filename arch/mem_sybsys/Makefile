@@ -1,4 +1,4 @@
-CFLAGS = -g -O0 -I.
+CFLAGS = -g -O3 -I.
 all: mem_subs
 
 mem_subs: mem_sys.c main.c
