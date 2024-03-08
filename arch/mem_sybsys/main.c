@@ -16,6 +16,7 @@ int main()
     volatile uint64_t sum, val = 4;
     size_t cl_size = cache_line_size();
 
+    printf("Freuency: %lf\n", clck_per_sec());
     discover_caches(&nlevels, cache_sizes);
 
     /* Allocate data buffer */
