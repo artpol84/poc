@@ -58,14 +58,7 @@ int main()
         uint64_t ts = rdtsc();
         for (j = 0; j < NACCESSES; j++)
         {
-//            memset(buf, j, wset);
-            size_t k,l;
-            
-            for(k = 0; k < cl_size; k++){
-        	for(l = 0; l < wset / cl_size; l++){
-                    buf[l * cl_size + k] += 1;
-                }
-            }
+            memset(buf, j, wset);
         }
         ts = rdtsc() - ts;
         
