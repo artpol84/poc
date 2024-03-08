@@ -99,6 +99,16 @@ rdtsc()
     return ticks;
 }
 
+static inline double clck_per_sec()
+{
+    uint64_t freq;
+    asm volatile("mrs %0, cntfrq_el0" : "=r" (freq));
+    return (double) freq;
+}
+
+inline static void init_tsc()
+{ }
+
 #endif
 
 /*
