@@ -44,9 +44,9 @@ int main()
             sum += buf[j];
         }
         
-        printf("[%d]:\twset=%zd, ts=%llu, %llu cyc/word, %lf cyc/byte, %lf B/sec\n",
+        printf("[%d]:\twset=%zd, ts=%llu, %llu cyc/word, %lf cyc/byte, %lf MB/sec\n",
                 i, wset, ts, ts / (wset/8) / NACCESSES, (double)ts / wset / NACCESSES,
-                (wset * NACCESSES)/(ts/clck_per_sec()));
+                (wset * NACCESSES)/(ts/clck_per_sec())/1e6);
     }
     
 
@@ -66,9 +66,9 @@ int main()
             sum += buf[j];
         }
         
-        printf("[%d]:\twset=%zd, ts=%llu, %llu cyc/word, %lf cyc/byte, %lf B/sec\n",
+        printf("[%d]:\twset=%zd, ts=%llu, %llu cyc/word, %lf cyc/byte, %lf MB/sec\n",
                 i, wset, ts, ts / (wset/8) / NACCESSES, (double)ts / wset / NACCESSES,
-                (wset * NACCESSES)/(ts/clck_per_sec()));
+                (wset * NACCESSES)/(ts/clck_per_sec())/1e6);
     }
  
 
