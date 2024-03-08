@@ -45,7 +45,7 @@ int main()
         }
         
         printf("[%d]:\twset=%zd, ts=%llu, %llu cyc/word, %llu cyc/byte, %llu B/sec\n",
-                i, wset, ts, ts / (wset/8) / NACCESSES, ts / wset / NACCESSES
+                i, wset, ts, ts / (wset/8) / NACCESSES, ts / wset / NACCESSES,
                 (wset * NACCESSES)/(ts/clck_per_sec()));
     }
     
