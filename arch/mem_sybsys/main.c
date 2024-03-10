@@ -41,11 +41,19 @@ void run_ucx_mem_bw()
         data.src = calloc(data.buf_size, 1);
         data.dst = calloc(data.buf_size, 1);
 
+        memset(data.src, 1, data.buf_size);
+        memset(data.dst, 1, data.buf_size);
+        memcpy(data.src, data.dst, data.buf_size);
+
         exec_loop(min_run_time, cb_ucx_mem_bw, (void*)&data, &niter, &ticks);
         
         printf("[%d]:\twset=%zd, bsize=%zd, niter=%llu, ticks=%llu, %lf MB/sec\n",
                 i, wset, data.buf_size, niter, ticks,
                 (data.buf_size * niter)/(ticks/clck_per_sec())/1e6);
+        
+        free(data.src);
+        free(data.dst);
+
     }
 }
 
