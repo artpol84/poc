@@ -59,6 +59,23 @@ rdtsc()
 	return a | ((uint64_t)d << 32);
 }
 
+void init_tsc();
+
+#if 0
+double clck_per_sec()
+{
+    return (ucs_arch_x86_rdtsc_enabled() == UCS_YES) ?
+                   ucs_arch_x86_tsc_freq :
+                   ucs_arch_generic_get_clocks_per_sec();
+}
+#else
+static inline double clck_per_sec()
+{
+    return (double)100000;
+}
+#endif
+
+
 
 #endif
 

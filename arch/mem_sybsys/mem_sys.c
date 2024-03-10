@@ -84,8 +84,13 @@ void discover_caches(int *nlevels, size_t cache_sizes[MEMSUBS_CACHE_LEVEL_MAX])
         printf("Level: %d\tSize: %zd\n", level + 1, cache_sizes[level]);
     }
 
+    if (!cache_level_cnt) {
+        *nlevels = 0;
+        return;
+    }
+
     /* Add memory into hirarchy */
-    cache_sizes[cache_level_cnt] = cache_sizes[cache_level_cnt - 1] * 64;
+    cache_sizes[cache_level_cnt] = cache_sizes[cache_level_cnt - 1] * 8;
     flush_array_sz = cache_sizes[cache_level_cnt];
     cache_level_cnt++;
 
