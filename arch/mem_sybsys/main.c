@@ -86,6 +86,60 @@ void cb_strided_access(void *in_data)
     }
 }
 
+void cb_strided_access_2(void *in_data)
+{
+    baccess_data_t *data = (baccess_data_t*)in_data;
+    size_t k, l;
+
+    for (k = 0; k < data->stride; k++)
+    {
+        for (l = 0; (l + 1) < data->buf_size / data->stride ; l += 2)
+        {
+            data->buf[(l + 0) * data->stride + k ] += 1;
+            data->buf[(l + 1) * data->stride + k ] += 1;
+        }
+    }
+}
+
+
+void cb_strided_access_4(void *in_data)
+{
+    baccess_data_t *data = (baccess_data_t*)in_data;
+    size_t k, l;
+
+    for (k = 0; k < data->stride; k++)
+    {
+        for (l = 0; (l + 3) < data->buf_size / data->stride ; l += 4)
+        {
+            data->buf[(l + 0) * data->stride + k ] += 1;
+            data->buf[(l + 1) * data->stride + k ] += 1;
+            data->buf[(l + 2) * data->stride + k ] += 1;
+            data->buf[(l + 3) * data->stride + k ] += 1;
+        }
+    }
+}
+
+void cb_strided_access_8(void *in_data)
+{
+    baccess_data_t *data = (baccess_data_t*)in_data;
+    size_t k, l;
+
+    for (k = 0; k < data->stride; k++)
+    {
+        for (l = 0; (l + 7) < data->buf_size / data->stride ; l += 8)
+        {
+            data->buf[(l + 0) * data->stride + k ] += 1;
+            data->buf[(l + 1) * data->stride + k ] += 1;
+            data->buf[(l + 2) * data->stride + k ] += 1;
+            data->buf[(l + 3) * data->stride + k ] += 1;
+            data->buf[(l + 4) * data->stride + k ] += 1;
+            data->buf[(l + 5) * data->stride + k ] += 1;
+            data->buf[(l + 6) * data->stride + k ] += 1;
+            data->buf[(l + 7) * data->stride + k ] += 1;
+        }
+    }
+}
+
 void run_buf_strided_access(size_t stride)
 {
     baccess_data_t data;
@@ -106,11 +160,25 @@ void run_buf_strided_access(size_t stride)
         memset(data.buf, 1, data.buf_size);
 
         exec_loop(min_run_time, cb_strided_access, (void*)&data, &niter, &ticks);
-        
+        printf("[%d]:\twset=%zd, bsize=%zd, niter=%llu, ticks=%llu, %lf MB/sec\n",
+                i, wset, data.buf_size, niter, ticks,
+                (data.buf_size * esize * niter)/(ticks/clck_per_sec())/1e6);
+
+        exec_loop(min_run_time, cb_strided_access_2, (void*)&data, &niter, &ticks);
         printf("[%d]:\twset=%zd, bsize=%zd, niter=%llu, ticks=%llu, %lf MB/sec\n",
                 i, wset, data.buf_size, niter, ticks,
                 (data.buf_size * esize * niter)/(ticks/clck_per_sec())/1e6);
         
+        exec_loop(min_run_time, cb_strided_access_4, (void*)&data, &niter, &ticks);
+        printf("[%d]:\twset=%zd, bsize=%zd, niter=%llu, ticks=%llu, %lf MB/sec\n",
+                i, wset, data.buf_size, niter, ticks,
+                (data.buf_size * esize * niter)/(ticks/clck_per_sec())/1e6);
+        
+        exec_loop(min_run_time, cb_strided_access_8, (void*)&data, &niter, &ticks);
+        printf("[%d]:\twset=%zd, bsize=%zd, niter=%llu, ticks=%llu, %lf MB/sec\n",
+                i, wset, data.buf_size, niter, ticks,
+                (data.buf_size * esize * niter)/(ticks/clck_per_sec())/1e6);
+
         free(data.buf);
     }
 }
@@ -135,6 +203,7 @@ int main()
         cache_sizes[1] = 1024*1024;
         cache_sizes[2] = 32*1024*1024;
         cache_sizes[3] = cache_sizes[2] * 8;
+        cl_size = 64;
     }
 
     printf("Recreate UCX memory BW performance:\n");
