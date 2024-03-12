@@ -10,10 +10,14 @@
 #define NACCESSES 16
 
 int nlevels;
+size_t cl_size;
 size_t cache_sizes[MEMSUBS_CACHE_LEVEL_MAX];
 double min_run_time = 1; /* 1 sec */
 
 
+/* ------------------------------------------------------
+ * UCX BW test replication 
+ * ------------------------------------------------------ */
 typedef struct {
     size_t buf_size;
     void *src, *dst;
@@ -58,12 +62,67 @@ void run_ucx_mem_bw()
 }
 
 
+/* ------------------------------------------------------
+ * Strided access pattern 
+ * ------------------------------------------------------ */
+
+typedef struct {
+    size_t stride;
+    size_t buf_size;
+    char *buf;
+} baccess_data_t;
+
+void cb_strided_access(void *in_data)
+{
+    baccess_data_t *data = (baccess_data_t*)in_data;
+    
+    size_t k, l;
+
+    for (k = 0; k < data->stride; k++)
+    {
+        for (l = 0; l < data->buf_size / data->stride; l++)
+        {
+            data->buf[l * data->stride + k] += 1;
+        }
+    }
+}
+
+void run_buf_strided_access(size_t stride)
+{
+    baccess_data_t data;
+    int i;
+
+    for (i = 0; i < nlevels; i++)
+    {
+        /* get 90% of the cache size */
+        size_t wset = ROUND_UP((cache_sizes[i] - cache_sizes[i] / 10), cl_size);
+        uint64_t ticks;
+        uint64_t niter;
+
+        data.buf_size = wset;
+        data.stride = stride;
+        data.buf = calloc(data.buf_size, 1);
+
+        memset(data.buf, 1, data.buf_size);
+
+        exec_loop(min_run_time, cb_ucx_mem_bw, (void*)&data, &niter, &ticks);
+        
+        printf("[%d]:\twset=%zd, bsize=%zd, niter=%llu, ticks=%llu, %lf MB/sec\n",
+                i, wset, data.buf_size, niter, ticks,
+                (data.buf_size * niter)/(ticks/clck_per_sec())/1e6);
+        
+        free(data.buf);
+    }
+}
+
+
+
 int main()
 {
     char *buf = NULL;
     int i, j;
     volatile uint64_t sum, val = 4;
-    size_t cl_size = cache_line_size();
+    cl_size = cache_line_size();
 
     printf("Freuency: %lf\n", clck_per_sec());
     discover_caches(&nlevels, cache_sizes);
@@ -78,7 +137,15 @@ int main()
         cache_sizes[3] = cache_sizes[2] * 8;
     }
 
+    printf("Recreate UCX memory BW performance:\n");
     run_ucx_mem_bw();
+
+    printf("Sequential access to a buffer:\n");
+    run_buf_strided_access(1);
+
+    printf("Strided access to a buffer (jumping over to the next cache line every access):\n");
+    run_buf_strided_access(cl_size);
+
 
 #if 0
     /* Allocate data buffer */
