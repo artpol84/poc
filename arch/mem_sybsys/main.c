@@ -72,6 +72,9 @@ typedef struct {
     uint64_t *buf;
 } baccess_data_t;
 
+#define IDX_FORMULA(x)  \
+    ((x) * data->stride + k)
+
 void cb_strided_access(void *in_data)
 {
     baccess_data_t *data = (baccess_data_t*)in_data;
@@ -95,8 +98,7 @@ void cb_strided_access_2(void *in_data)
     {
         for (l = 0; (l + 1) < data->buf_size / data->stride ; l += 2)
         {
-            data->buf[(l + 0) * data->stride + k ] += 1;
-            data->buf[(l + 1) * data->stride + k ] += 1;
+            DO_2(data->buf, IDX_FORMULA, l);
         }
     }
 }
@@ -107,14 +109,13 @@ void cb_strided_access_4(void *in_data)
     baccess_data_t *data = (baccess_data_t*)in_data;
     size_t k, l;
 
+
+
     for (k = 0; k < data->stride; k++)
     {
         for (l = 0; (l + 3) < data->buf_size / data->stride ; l += 4)
         {
-            data->buf[(l + 0) * data->stride + k ] += 1;
-            data->buf[(l + 1) * data->stride + k ] += 1;
-            data->buf[(l + 2) * data->stride + k ] += 1;
-            data->buf[(l + 3) * data->stride + k ] += 1;
+            DO_4(data->buf, IDX_FORMULA, l);
         }
     }
 }
@@ -128,14 +129,21 @@ void cb_strided_access_8(void *in_data)
     {
         for (l = 0; (l + 7) < data->buf_size / data->stride ; l += 8)
         {
-            data->buf[(l + 0) * data->stride + k ] += 1;
-            data->buf[(l + 1) * data->stride + k ] += 1;
-            data->buf[(l + 2) * data->stride + k ] += 1;
-            data->buf[(l + 3) * data->stride + k ] += 1;
-            data->buf[(l + 4) * data->stride + k ] += 1;
-            data->buf[(l + 5) * data->stride + k ] += 1;
-            data->buf[(l + 6) * data->stride + k ] += 1;
-            data->buf[(l + 7) * data->stride + k ] += 1;
+            DO_8(data->buf, IDX_FORMULA, l);
+        }
+    }
+}
+
+void cb_strided_access_16(void *in_data)
+{
+    baccess_data_t *data = (baccess_data_t*)in_data;
+    size_t k, l;
+
+    for (k = 0; k < data->stride; k++)
+    {
+        for (l = 0; (l + 15) < data->buf_size / data->stride ; l += 16)
+        {
+            DO_16(data->buf, IDX_FORMULA, l);
         }
     }
 }

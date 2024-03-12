@@ -16,4 +16,22 @@ void exec_loop(double min_time, exec_loop_cb_t *cb, void *data,
                 uint64_t *out_iter, uint64_t *out_ticks);
 
 
+#define DO_2(x, idx_formula, base_idx)   \
+    x[idx_formula(base_idx)] += 1;       \
+                                         \
+    x[idx_formula(base_idx + 1)] += 1;   \
+
+#define DO_4(x, idx_formula, base_idx)  \
+    DO_2(x,idx_formula,(base_idx));       \
+    DO_2(x,idx_formula,(base_idx) + 2);   \
+
+#define DO_8(x, idx_formula, base_idx)  \
+    DO_4(x,idx_formula,(base_idx));       \
+    DO_4(x,idx_formula,(base_idx + 4));   \
+
+#define DO_16(x, idx_formula, base_idx)  \
+    DO_8(x,idx_formula,(base_idx));       \
+    DO_8(x,idx_formula,(base_idx + 8));   \
+
+
 #endif
