@@ -187,6 +187,11 @@ void run_buf_strided_access(size_t stride)
                 i, wset, data.buf_size, niter, ticks,
                 (data.buf_size * esize * niter)/(ticks/clck_per_sec())/1e6);
 
+       exec_loop(min_run_time, cb_strided_access_16, (void*)&data, &niter, &ticks);
+        printf("[%d]:\twset=%zd, bsize=%zd, niter=%llu, ticks=%llu, %lf MB/sec\n",
+                i, wset, data.buf_size, niter, ticks,
+                (data.buf_size * esize * niter)/(ticks/clck_per_sec())/1e6);
+
         free(data.buf);
     }
 }
