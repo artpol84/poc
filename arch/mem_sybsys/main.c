@@ -105,7 +105,7 @@ void run_buf_strided_access(size_t stride)
 
         memset(data.buf, 1, data.buf_size);
 
-        exec_loop(min_run_time, cb_ucx_mem_bw, (void*)&data, &niter, &ticks);
+        exec_loop(min_run_time, cb_strided_access, (void*)&data, &niter, &ticks);
         
         printf("[%d]:\twset=%zd, bsize=%zd, niter=%llu, ticks=%llu, %lf MB/sec\n",
                 i, wset, data.buf_size, niter, ticks,
