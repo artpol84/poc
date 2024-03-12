@@ -69,13 +69,12 @@ void run_ucx_mem_bw()
 typedef struct {
     size_t stride;
     size_t buf_size;
-    char *buf;
+    uint64_t *buf;
 } baccess_data_t;
 
 void cb_strided_access(void *in_data)
 {
     baccess_data_t *data = (baccess_data_t*)in_data;
-    
     size_t k, l;
 
     for (k = 0; k < data->stride; k++)
@@ -98,10 +97,11 @@ void run_buf_strided_access(size_t stride)
         size_t wset = ROUND_UP((cache_sizes[i] - cache_sizes[i] / 10), cl_size);
         uint64_t ticks;
         uint64_t niter;
+        size_t esize = sizeof(data.buf[0]);
 
-        data.buf_size = wset;
-        data.stride = stride;
-        data.buf = calloc(data.buf_size, 1);
+        data.buf_size = wset / esize;
+        data.stride = ROUND_UP(stride, esize) / esize;
+        data.buf = calloc(data.buf_size, esize);
 
         memset(data.buf, 1, data.buf_size);
 
@@ -109,7 +109,7 @@ void run_buf_strided_access(size_t stride)
         
         printf("[%d]:\twset=%zd, bsize=%zd, niter=%llu, ticks=%llu, %lf MB/sec\n",
                 i, wset, data.buf_size, niter, ticks,
-                (data.buf_size * niter)/(ticks/clck_per_sec())/1e6);
+                (data.buf_size * esize * niter)/(ticks/clck_per_sec())/1e6);
         
         free(data.buf);
     }
