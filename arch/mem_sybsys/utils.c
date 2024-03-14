@@ -15,6 +15,9 @@ void exec_loop(double min_time, exec_loop_cb_t *cb, void *data,
     start = rdtsc();
     do {
         cb(data);
+
+// printf("\n\n\n\nREMOVE THE DEBUG BREAK!!!!!!!!\n\n\n\n");
+// break;
         end = rdtsc();
         niter++;
     } while( (end - start)/cps < min_time);

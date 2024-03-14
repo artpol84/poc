@@ -69,11 +69,114 @@ void run_ucx_mem_bw()
 typedef struct {
     size_t stride;
     size_t buf_size;
-    uint64_t *buf;
-} baccess_data_t;
+    void *buf;
+} baccess_cbdata_t;
 
-#define IDX_FORMULA(x)  \
-    ((x) * data->stride + k)
+
+#define IDX_FORMULA(base_idx, stride, idx)  \
+    ((base_idx) * (stride) + (k))
+
+#define BUF_ACCESS_DATA_NAME(type)          \
+    baccess_data_ ## type
+
+#define BUF_ACCESS_DATA_DECL(type)  \
+    typedef struct {                \
+    size_t stride;                  \
+    size_t buf_size;                \
+    type *buf;                      \
+} BUF_ACCESS_DATA_NAME(type)
+
+#define BACCESS_CB_NAME(prefix, type, unroll_macro)     \
+    cb_baccess_ ## prefix ## _ ## type ## _ ## unroll_macro
+    
+
+#define BACCESS_CB_DEFINE_HEADER(prefix, type, unroll_ratio)        \
+    /* Define the callback */                                           \
+    void                                                                \
+    BACCESS_CB_NAME(prefix, type, unroll_ratio) (void *in_data)     \
+    {                                                                   \
+        baccess_cbdata_t *data = (baccess_cbdata_t*)in_data;            \
+        type *buf = (type*)data->buf;                                   \
+        size_t esize = sizeof(type);                                    \
+        size_t ecnt = data->buf_size / esize;                           \
+        size_t stride = data->stride / esize;                           \
+        size_t k, l;                                                    \
+        for (k = 0; k < stride; k++)                                    \
+        {                                                               \
+            size_t inn_lim = ecnt / stride;                             \
+            for (l = 0; l < inn_lim; l++) {                             
+
+#define BACCESS_CB_DEFINE_FOOTER                                        \
+            }                                                           \
+        }                                                               \
+    }
+
+#define BACCESS_CB_1(prefix, type, op, val)         \
+    BACCESS_CB_DEFINE_HEADER(prefix, type, 1)       \
+    DO_1(op, buf, IDX_FORMULA(l, stride, k), val);  \
+    BACCESS_CB_DEFINE_FOOTER
+
+#define BACCESS_CB_2(prefix, type, op, val)         \
+    BACCESS_CB_DEFINE_HEADER(prefix, type, 2)       \
+    DO_2(op, buf, IDX_FORMULA(l, stride, k), val);  \
+    BACCESS_CB_DEFINE_FOOTER
+
+#define BACCESS_CB_4(prefix, type, op, val)         \
+    BACCESS_CB_DEFINE_HEADER(prefix, type, 4)       \
+    DO_4(op, buf, IDX_FORMULA(l, stride, k), val);  \
+    BACCESS_CB_DEFINE_FOOTER
+
+#define BACCESS_CB_8(prefix, type, op, val)         \
+    BACCESS_CB_DEFINE_HEADER(prefix, type, 8)       \
+    DO_8(op, buf, IDX_FORMULA(l, stride, k), val);  \
+    BACCESS_CB_DEFINE_FOOTER
+
+#define BACCESS_CB_16(prefix, type, op, val)        \
+    BACCESS_CB_DEFINE_HEADER(prefix, type, 16)      \
+    DO_16(op, buf, IDX_FORMULA(l, stride, k), val); \
+    BACCESS_CB_DEFINE_FOOTER
+
+/*
+void                                                                
+BACCESS_CB_NAME(p, uint64_t, 8) (void *in_data)     
+{                                                                   
+    baccess_cbdata_t *data = (baccess_cbdata_t*)in_data;            
+    uint64_t *buf = (uint64_t*)data->buf;                                   
+    size_t esize = sizeof(uint64_t);                                    
+    size_t ecnt = data->buf_size / esize;                           
+    size_t stride = data->stride / esize;                          
+    size_t k, l;                                                    
+    for (k = 0; k < stride; k++)                                    
+    {                                                               
+        size_t inn_lim = ecnt / stride;                             
+        for (l = 0; l < inn_lim; l++) {                             
+            DO_8(=, buf, IDX_FORMULA(l, stride, k))
+            //DO_2(=, buf, (IDX_FORMULA(), l);
+        }                                                           
+    }                                                               
+}
+*/
+
+
+BACCESS_CB_1(assign, uint64_t, =, 0xFFFFFFFFL)
+BACCESS_CB_2(assign, uint64_t, =, 0xFFFFFFFFL)
+BACCESS_CB_4(assign, uint64_t, =, 0xFFFFFFFFL)
+BACCESS_CB_8(assign, uint64_t, =, 0xFFFFFFFFL)
+BACCESS_CB_16(assign, uint64_t, =, 0xFFFFFFFFL)
+
+BACCESS_CB_1(inc, uint64_t, +=, 0x16)
+BACCESS_CB_2(inc, uint64_t, +=, 0x16)
+BACCESS_CB_4(inc, uint64_t, +=, 0x16)
+BACCESS_CB_8(inc, uint64_t, +=, 0x16)
+BACCESS_CB_16(inc, uint64_t, +=, 0x16)
+
+BACCESS_CB_1(mul, uint64_t, *=, 0x16)
+BACCESS_CB_2(mul, uint64_t, *=, 0x16)
+BACCESS_CB_4(mul, uint64_t, *=, 0x16)
+BACCESS_CB_8(mul, uint64_t, *=, 0x16)
+BACCESS_CB_16(mul, uint64_t, *=, 0x16)
+
+#if 0
 
 void cb_strided_access(void *in_data)
 {
@@ -147,10 +250,11 @@ void cb_strided_access_16(void *in_data)
         }
     }
 }
+#endif 
 
-void run_buf_strided_access(size_t stride)
+void run_buf_strided_access(size_t stride, exec_loop_cb_t *cb)
 {
-    baccess_data_t data;
+    baccess_cbdata_t data;
     int i;
 
     for (i = 0; i < nlevels; i++)
@@ -159,44 +263,21 @@ void run_buf_strided_access(size_t stride)
         size_t wset = ROUND_UP((cache_sizes[i] - cache_sizes[i] / 10), cl_size);
         uint64_t ticks;
         uint64_t niter;
-        size_t esize = sizeof(data.buf[0]);
+        size_t esize = sizeof(uint64_t);
 
-        data.buf_size = wset / esize;
-        data.stride = ROUND_UP(stride, esize) / esize;
-        data.buf = calloc(data.buf_size, esize);
+        data.buf_size = wset;
+        data.stride = ROUND_UP(stride, esize);
+        data.buf = calloc(data.buf_size, 1);
 
         memset(data.buf, 1, data.buf_size);
 
-        exec_loop(min_run_time, cb_strided_access, (void*)&data, &niter, &ticks);
+        exec_loop(min_run_time, cb, (void*)&data, &niter, &ticks);
         printf("[%d]:\twset=%zd, bsize=%zd, niter=%llu, ticks=%llu, %lf MB/sec\n",
                 i, wset, data.buf_size, niter, ticks,
                 (data.buf_size * esize * niter)/(ticks/clck_per_sec())/1e6);
-
-        exec_loop(min_run_time, cb_strided_access_2, (void*)&data, &niter, &ticks);
-        printf("[%d]:\twset=%zd, bsize=%zd, niter=%llu, ticks=%llu, %lf MB/sec\n",
-                i, wset, data.buf_size, niter, ticks,
-                (data.buf_size * esize * niter)/(ticks/clck_per_sec())/1e6);
-        
-        exec_loop(min_run_time, cb_strided_access_4, (void*)&data, &niter, &ticks);
-        printf("[%d]:\twset=%zd, bsize=%zd, niter=%llu, ticks=%llu, %lf MB/sec\n",
-                i, wset, data.buf_size, niter, ticks,
-                (data.buf_size * esize * niter)/(ticks/clck_per_sec())/1e6);
-        
-        exec_loop(min_run_time, cb_strided_access_8, (void*)&data, &niter, &ticks);
-        printf("[%d]:\twset=%zd, bsize=%zd, niter=%llu, ticks=%llu, %lf MB/sec\n",
-                i, wset, data.buf_size, niter, ticks,
-                (data.buf_size * esize * niter)/(ticks/clck_per_sec())/1e6);
-
-       exec_loop(min_run_time, cb_strided_access_16, (void*)&data, &niter, &ticks);
-        printf("[%d]:\twset=%zd, bsize=%zd, niter=%llu, ticks=%llu, %lf MB/sec\n",
-                i, wset, data.buf_size, niter, ticks,
-                (data.buf_size * esize * niter)/(ticks/clck_per_sec())/1e6);
-
         free(data.buf);
     }
 }
-
-
 
 int main()
 {
@@ -219,14 +300,72 @@ int main()
         cl_size = 64;
     }
 
-    printf("Recreate UCX memory BW performance:\n");
+    printf("\n");
+    printf("===================================\n");
+    printf("Recreate UCX memory BW performance:\n\n");
     run_ucx_mem_bw();
 
+
+    printf("\n");
+    printf("===================================\n");
+    printf("Performance of '=' operation\n\n");
+
+    printf("Loop unroll = 1\n");
+
     printf("Sequential access to a buffer:\n");
-    run_buf_strided_access(1);
+    run_buf_strided_access(1, BACCESS_CB_NAME(assign, uint64_t, 1));
 
     printf("Strided access to a buffer (jumping over to the next cache line every access):\n");
-    run_buf_strided_access(cl_size);
+    run_buf_strided_access(cl_size, BACCESS_CB_NAME(assign, uint64_t, 1));
+
+    printf("Loop unroll = 8\n");
+
+    printf("Sequential access to a buffer:\n");
+    run_buf_strided_access(1, BACCESS_CB_NAME(assign, uint64_t, 8));
+
+    printf("Strided access to a buffer (jumping over to the next cache line every access):\n");
+    run_buf_strided_access(cl_size, BACCESS_CB_NAME(assign, uint64_t, 8));
+
+
+    printf("\n");
+    printf("===================================\n");
+    printf("Performance of '+=' operation\n\n");
+
+    printf("Loop unroll = 1\n");
+
+    printf("Sequential access to a buffer:\n");
+    run_buf_strided_access(1, BACCESS_CB_NAME(inc, uint64_t, 1));
+
+    printf("Strided access to a buffer (jumping over to the next cache line every access):\n");
+    run_buf_strided_access(cl_size, BACCESS_CB_NAME(inc, uint64_t, 1));
+
+    printf("Loop unroll = 8\n");
+
+    printf("Sequential access to a buffer:\n");
+    run_buf_strided_access(1, BACCESS_CB_NAME(inc, uint64_t, 8));
+
+    printf("Strided access to a buffer (jumping over to the next cache line every access):\n");
+    run_buf_strided_access(cl_size, BACCESS_CB_NAME(inc, uint64_t, 8));
+
+    printf("\n");
+    printf("===================================\n");
+    printf("Performance of '*=' operation\n\n");
+
+    printf("Loop unroll = 1\n");
+
+    printf("Sequential access to a buffer:\n");
+    run_buf_strided_access(1, BACCESS_CB_NAME(mul, uint64_t, 1));
+
+    printf("Strided access to a buffer (jumping over to the next cache line every access):\n");
+    run_buf_strided_access(cl_size, BACCESS_CB_NAME(mul, uint64_t, 1));
+
+    printf("Loop unroll = 8\n");
+
+    printf("Sequential access to a buffer:\n");
+    run_buf_strided_access(1, BACCESS_CB_NAME(mul, uint64_t, 8));
+
+    printf("Strided access to a buffer (jumping over to the next cache line every access):\n");
+    run_buf_strided_access(cl_size, BACCESS_CB_NAME(mul, uint64_t, 8));
 
 
 #if 0

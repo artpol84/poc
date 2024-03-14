@@ -16,22 +16,24 @@ void exec_loop(double min_time, exec_loop_cb_t *cb, void *data,
                 uint64_t *out_iter, uint64_t *out_ticks);
 
 
-#define DO_2(x, idx_formula, base_idx)   \
-    x[idx_formula(base_idx)] += 1;       \
-                                         \
-    x[idx_formula(base_idx + 1)] += 1;   \
+#define DO_1(op, buf, base_idx, val)        \
+    buf[base_idx] op val;
 
-#define DO_4(x, idx_formula, base_idx)  \
-    DO_2(x,idx_formula,(base_idx));       \
-    DO_2(x,idx_formula,(base_idx) + 2);   \
+#define DO_2(op, buf, base_idx, val)        \
+    DO_1(op, buf, (base_idx), val);         \
+    DO_1(op, buf, (base_idx) + 1, val);
 
-#define DO_8(x, idx_formula, base_idx)  \
-    DO_4(x,idx_formula,(base_idx));       \
-    DO_4(x,idx_formula,(base_idx + 4));   \
+#define DO_4(op, buf, base_idx, val)        \
+    DO_2(op, buf, base_idx, val);           \
+    DO_2(op, buf, (base_idx) + 2, val);
 
-#define DO_16(x, idx_formula, base_idx)  \
-    DO_8(x,idx_formula,(base_idx));       \
-    DO_8(x,idx_formula,(base_idx + 8));   \
+#define DO_8(op, buf, base_idx, val)        \
+    DO_4(op, buf, (base_idx), val);         \
+    DO_4(op, buf, (base_idx + 4), val);
+
+#define DO_16(op, buf, base_idx, val)       \
+    DO_8(op, buf, (base_idx), val);         \
+    DO_8(op, buf, (base_idx + 8), val);
 
 
 #endif
