@@ -136,28 +136,6 @@ typedef struct {
     DO_16(op, buf, IDX_FORMULA(l, stride, k), val); \
     BACCESS_CB_DEFINE_FOOTER
 
-/*
-void                                                                
-BACCESS_CB_NAME(p, uint64_t, 8) (void *in_data)     
-{                                                                   
-    baccess_cbdata_t *data = (baccess_cbdata_t*)in_data;            
-    uint64_t *buf = (uint64_t*)data->buf;                                   
-    size_t esize = sizeof(uint64_t);                                    
-    size_t ecnt = data->buf_size / esize;                           
-    size_t stride = data->stride / esize;                          
-    size_t k, l;                                                    
-    for (k = 0; k < stride; k++)                                    
-    {                                                               
-        size_t inn_lim = ecnt / stride;                             
-        for (l = 0; l < inn_lim; l++) {                             
-            DO_8(=, buf, IDX_FORMULA(l, stride, k))
-            //DO_2(=, buf, (IDX_FORMULA(), l);
-        }                                                           
-    }                                                               
-}
-*/
-
-
 BACCESS_CB_1(assign, uint64_t, =, 0xFFFFFFFFL)
 BACCESS_CB_2(assign, uint64_t, =, 0xFFFFFFFFL)
 BACCESS_CB_4(assign, uint64_t, =, 0xFFFFFFFFL)
@@ -176,83 +154,6 @@ BACCESS_CB_4(mul, uint64_t, *=, 0x16)
 BACCESS_CB_8(mul, uint64_t, *=, 0x16)
 BACCESS_CB_16(mul, uint64_t, *=, 0x16)
 
-
-#if 0
-
-void cb_strided_access(void *in_data)
-{
-    baccess_data_t *data = (baccess_data_t*)in_data;
-    size_t k, l;
-
-    for (k = 0; k < data->stride; k++)
-    {
-        for (l = 0; l < data->buf_size / data->stride; l++)
-        {
-            data->buf[l * data->stride + k] += 1;
-        }
-    }
-}
-
-void cb_strided_access_2(void *in_data)
-{
-    baccess_data_t *data = (baccess_data_t*)in_data;
-    size_t k, l;
-
-    for (k = 0; k < data->stride; k++)
-    {
-        for (l = 0; (l + 1) < data->buf_size / data->stride ; l += 2)
-        {
-            DO_2(data->buf, IDX_FORMULA, l);
-        }
-    }
-}
-
-
-void cb_strided_access_4(void *in_data)
-{
-    baccess_data_t *data = (baccess_data_t*)in_data;
-    size_t k, l;
-
-
-
-    for (k = 0; k < data->stride; k++)
-    {
-        for (l = 0; (l + 3) < data->buf_size / data->stride ; l += 4)
-        {
-            DO_4(data->buf, IDX_FORMULA, l);
-        }
-    }
-}
-
-void cb_strided_access_8(void *in_data)
-{
-    baccess_data_t *data = (baccess_data_t*)in_data;
-    size_t k, l;
-
-    for (k = 0; k < data->stride; k++)
-    {
-        for (l = 0; (l + 7) < data->buf_size / data->stride ; l += 8)
-        {
-            DO_8(data->buf, IDX_FORMULA, l);
-        }
-    }
-}
-
-void cb_strided_access_16(void *in_data)
-{
-    baccess_data_t *data = (baccess_data_t*)in_data;
-    size_t k, l;
-
-    for (k = 0; k < data->stride; k++)
-    {
-        for (l = 0; (l + 15) < data->buf_size / data->stride ; l += 16)
-        {
-            DO_16(data->buf, IDX_FORMULA, l);
-        }
-    }
-}
-#endif 
-
 void run_buf_strided_access(size_t stride, exec_loop_cb_t *cb)
 {
     baccess_cbdata_t data;
@@ -265,18 +166,21 @@ void run_buf_strided_access(size_t stride, exec_loop_cb_t *cb)
         uint64_t ticks;
         uint64_t niter;
         size_t esize = sizeof(uint64_t);
+        int j;
 
-        data.buf_size = wset;
-        data.stride = ROUND_UP(stride, esize);
-        data.buf = calloc(data.buf_size, 1);
+        for (j = 0; j < 2; j++) {
+            data.buf_size = wset / (1 + !!j);
+            data.stride = ROUND_UP(stride, esize);
+            data.buf = calloc(data.buf_size, 1);
 
-        memset(data.buf, 1, data.buf_size);
+            memset(data.buf, 1, data.buf_size);
 
-        exec_loop(min_run_time, cb, (void*)&data, &niter, &ticks);
-        printf("[%d]:\twset=%zd, bsize=%zd, niter=%llu, ticks=%llu, %lf MB/sec\n",
-                i, wset, data.buf_size, niter, ticks,
-                (data.buf_size * esize * niter)/(ticks/clck_per_sec())/1e6);
-        free(data.buf);
+            exec_loop(min_run_time, cb, (void *)&data, &niter, &ticks);
+            printf("[%d]:\twset=%zd, bsize=%zd, niter=%llu, ticks=%llu, %lf MB/sec\n",
+                   i, wset, data.buf_size, niter, ticks,
+                   (data.buf_size * esize * niter) / (ticks / clck_per_sec()) / 1e6);
+            free(data.buf);
+        }
     }
 }
 
