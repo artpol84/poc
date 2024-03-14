@@ -161,7 +161,7 @@ BACCESS_CB_NAME(p, uint64_t, 8) (void *in_data)
 BACCESS_CB_1(assign, uint64_t, =, 0xFFFFFFFFL)
 BACCESS_CB_2(assign, uint64_t, =, 0xFFFFFFFFL)
 BACCESS_CB_4(assign, uint64_t, =, 0xFFFFFFFFL)
-BACCESS_CB_8(assign, uint64_t, =, 0xFFFFFFFFL)
+//BACCESS_CB_8(assign, uint64_t, =, 0xFFFFFFFFL)
 BACCESS_CB_16(assign, uint64_t, =, 0xFFFFFFFFL)
 
 BACCESS_CB_1(inc, uint64_t, +=, 0x16)
@@ -175,6 +175,30 @@ BACCESS_CB_2(mul, uint64_t, *=, 0x16)
 BACCESS_CB_4(mul, uint64_t, *=, 0x16)
 BACCESS_CB_8(mul, uint64_t, *=, 0x16)
 BACCESS_CB_16(mul, uint64_t, *=, 0x16)
+
+
+void cb_baccess_assign_uint64_t_8 (void *in_data) 
+{
+    baccess_cbdata_t *data = (baccess_cbdata_t*)in_data;
+    uint64_t *buf = (uint64_t*)data->buf;
+    size_t esize = sizeof(uint64_t);
+    size_t ecnt = data->buf_size / esize;
+    size_t stride = data->stride / esize;
+    size_t k, l;
+    for (k = 0; k < stride; k++) {
+        size_t inn_lim = ecnt / stride;
+        for (l = 0; l < inn_lim; l++) {
+            buf[((((l) * (stride) + (k))))] = 0xFFFFFFFFL;
+            buf[((((l) * (stride) + (k)))) + 1] = 0xFFFFFFFFL;
+            buf[(((((l) * (stride) + (k)))) + 2)] = 0xFFFFFFFFL;
+            buf[(((((l) * (stride) + (k)))) + 2) + 1] = 0xFFFFFFFFL;
+            buf[((((l) * (stride) + (k)) + 4))] = 0xFFFFFFFFL;
+            buf[((((l) * (stride) + (k)) + 4)) + 1] = 0xFFFFFFFFL;
+            buf[(((((l) * (stride) + (k)) + 4)) + 2)] = 0xFFFFFFFFL;
+            buf[(((((l) * (stride) + (k)) + 4)) + 2) + 1] = 0xFFFFFFFFL;
+        }
+    }
+}
 
 #if 0
 
