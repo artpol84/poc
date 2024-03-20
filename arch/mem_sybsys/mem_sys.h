@@ -14,6 +14,7 @@ typedef struct {
 
 int caches_discover(cache_struct_t *cache);
 void caches_set_default(cache_struct_t *cache);
+int caches_detect_level(cache_struct_t *cache, size_t buf_size);
 void flush_cache();
 
 #endif

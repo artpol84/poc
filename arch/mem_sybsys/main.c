@@ -14,6 +14,7 @@
 double run_time;
 char *test, *modifier;
 ssize_t buf_size_focus;
+int get_cache_info;
 
 void set_default_args()
 {
@@ -21,6 +22,7 @@ void set_default_args()
     test = TEST_UCX;
     modifier = "";
     buf_size_focus = -1;
+    get_cache_info = 0;
 }
 
 void usage(char *cmd)
@@ -28,6 +30,7 @@ void usage(char *cmd)
 
     fprintf(stderr, "Options: %s\n", cmd);
     fprintf(stderr, "\t-h        Display this help\n");
+    fprintf(stderr, "\t-i        Print cache information only\n");
     fprintf(stderr, "Test description:\n");
     fprintf(stderr, "\t-r [arg]  Minimum run time of the test in seconds (the benchmark will adjust # of iterations (default: %.1lf)\n", run_time);
     fprintf(stderr, "\t-t [arg]  Test name (see the list below, default: %s)\n", test);
@@ -45,11 +48,14 @@ void process_args(int argc, char **argv)
 
     set_default_args();
     
-    while((c = getopt(argc, argv, "hr:t:m:")) != -1) {
+    while((c = getopt(argc, argv, "hir:t:m:s:")) != -1) {
         switch (c) {
         case 'h':
             usage(argv[0]);
             exit(0);
+            break;
+        case 'i':
+            get_cache_info = 1;
             break;
         case 'r':
             /* from the getopt perspective thrds is an optarg. Check that 
@@ -100,6 +106,11 @@ int main(int argc, char **argv)
     printf("Freuency: %lf\n", clck_per_sec());
     caches_discover(&cache);
 
+    if (get_cache_info) {
+        /* Exit without running the benchmark */
+        return 0;
+    }
+
     /* In case discovery failed - use some default values */
     if (!cache.nlevels) {
         printf("Cache subsystem discovery failed - use defaults\n");
@@ -109,6 +120,7 @@ int main(int argc, char **argv)
     printf("Executing '%s' benchmark\n", test);
     desc.run_time = run_time;
     desc.test_arg = modifier;
+    desc.focus_size = buf_size_focus;
     if (tests_exec(&cache, test, &desc)) {
         printf("Failed to execute test '%s'\n", test);
         
