@@ -99,10 +99,37 @@ typedef enum {
     OP_ASSIGN, OP_INC, OP_MUL
 } baccess_t;
 
+
+static int
+exec_one(cache_struct_t *cache, exec_infra_desc_t *desc, size_t bsize, 
+        size_t stride, size_t esize, exec_loop_cb_t *cb)
+{
+    uint64_t ticks;
+    uint64_t niter;
+    baccess_cbdata_t data;
+    int ret;
+    int level = caches_detect_level(cache, bsize);
+    
+    data.buf_size = bsize;
+    data.stride = ROUND_UP(stride, esize);
+    data.buf = calloc(data.buf_size, 1);
+
+    memset(data.buf, 1, data.buf_size);
+
+    ret = exec_loop(desc, cb, (void *)&data, &niter, &ticks);
+    if (ret) {
+        return ret;
+    }
+    log_output(level, data.buf_size, bsize, niter, ticks);
+
+    free(data.buf);
+    return 0;
+}
+
 int run_buf_strided_access(cache_struct_t *cache, exec_infra_desc_t *desc)
 {
-    baccess_cbdata_t data;
     int i;
+    size_t esize = sizeof(uint64_t);
     size_t stride = 1;
     int unroll = 1;
     baccess_t op_type = OP_ASSIGN;
@@ -204,30 +231,23 @@ int run_buf_strided_access(cache_struct_t *cache, exec_infra_desc_t *desc)
     }
 
     log_header();
+
+    if (desc->focus_size > 0) {
+        return exec_one(cache, desc,desc->focus_size, stride, esize, cb);
+    }
+
     for (i = 0; i < cache->nlevels; i++)
     {
         /* get 90% of the cache size */
         size_t wset = ROUND_UP((cache->cache_sizes[i] - cache->cache_sizes[i] / 10), cache->cl_size);
-        uint64_t ticks;
-        uint64_t niter;
-        size_t esize = sizeof(uint64_t);
         int j;
         int ret;
 
         for (j = 0; j < 2; j++) {
-            data.buf_size = wset / (1 + !!j);
-            data.stride = ROUND_UP(stride, esize);
-            data.buf = calloc(data.buf_size, 1);
-
-            memset(data.buf, 1, data.buf_size);
-
-            ret = exec_loop(desc, cb, (void *)&data, &niter, &ticks);
+            ret = exec_one(cache, desc, wset / (1 + !!j), stride, esize, cb);
             if (ret) {
                 return ret;
             }
-            log_output(i, data.buf_size, wset, niter, ticks);
-
-            free(data.buf);
         }
     }
     return 0;

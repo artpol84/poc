@@ -23,13 +23,15 @@ int cb_ucx_mem_bw(void *in_data)
     return 0;
 }
 
-int exec_one(cache_struct_t *cache, exec_infra_desc_t *desc, size_t bsize)
+static int
+exec_one(cache_struct_t *cache, exec_infra_desc_t *desc, size_t bsize)
 {
     memcpy_data_t data;
     int ret;
     uint64_t ticks;
     uint64_t niter;
-    int level = caches_detect_level(cache, bsize);
+    /* As we are copying from one and saving to another, the footprint is 2x */
+    int level = caches_detect_level(cache, bsize * 2);
 
     data.buf_size = bsize;
     data.src = calloc(data.buf_size, 1);
