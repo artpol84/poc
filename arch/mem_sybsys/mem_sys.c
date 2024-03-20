@@ -21,28 +21,30 @@ cache_line_size()
 	return i;
 }
 
-void discover_caches(int *nlevels, size_t cache_sizes[MEMSUBS_CACHE_LEVEL_MAX])
+int caches_discover(cache_struct_t *cache)
 {
     FILE * p = 0;
     int idx = 0, level = -1;
     size_t size;
-    int cache_level_cnt = 0;
+
+    cache->cl_size = cache_line_size();
+
+    cache->nlevels = 0;
 
     for(idx = 0; ; idx++){
         char path[1024] = "", buf[256];
         int ret;
         char symb;
         sprintf(path, "/sys/devices/system/cpu/cpu0/cache/index%d/level", idx);
+
+        if (idx >= MEMSUBS_CACHE_LEVEL_MAX) {
+            printf("Too many cache levels, only support %d", MEMSUBS_CACHE_LEVEL_MAX);
+            return -1;
+        }
+
         p = fopen(path, "r");
         if( !p ) {
             break;
-//            if( level < 0 ) {
-//                printf("WARNING: Cannot identify cache size, use 10M by default\n");
-//                return (10 * 1024 * 1024);
-//            } else {
-//                printf("Last level cache: level=%d, size=%zd\n", level, size);
-//                return size;
-//            }
         }
         fscanf(p, "%d", &level);
 
@@ -75,31 +77,40 @@ void discover_caches(int *nlevels, size_t cache_sizes[MEMSUBS_CACHE_LEVEL_MAX])
                 break;
             }
         }
-        cache_sizes[level-1] = size;
-        cache_level_cnt++;
+        cache->cache_sizes[level-1] = size;
+        cache->nlevels++;
     }
 
     printf("Cache subsystem (CL size = %zd):\n", cache_line_size());
-    for(level=0; level < cache_level_cnt; level++) {
-        printf("Level: %d\tSize: %zd\n", level + 1, cache_sizes[level]);
+    for(level=0; level < cache->nlevels; level++) {
+        printf("Level: %d\tSize: %zd\n", level + 1, cache->cache_sizes[level]);
     }
 
-    if (!cache_level_cnt) {
-        *nlevels = 0;
-        return;
+    if (!cache->nlevels) {
+         return 0;
     }
 
     /* Add memory into hirarchy */
-    cache_sizes[cache_level_cnt] = cache_sizes[cache_level_cnt - 1] * 8;
-    flush_array_sz = cache_sizes[cache_level_cnt];
-    cache_level_cnt++;
+    cache->cache_sizes[cache->nlevels] = cache->cache_sizes[cache->nlevels - 1] * 8;
+    flush_array_sz = cache->cache_sizes[cache->nlevels];
+    cache->nlevels++;
 
     flush_array = calloc(flush_array_sz, 1);
 
-    *nlevels = cache_level_cnt;
-    return;
+    return 0;
 }
 
+
+void caches_set_default(cache_struct_t *cache)
+{
+    cache->cl_size = 64;
+    cache->nlevels = 4;
+
+    cache->cache_sizes[0] = 32*1024;
+    cache->cache_sizes[1] = 1024*1024;
+    cache->cache_sizes[2] = 32*1024*1024;
+    cache->cache_sizes[3] = cache->cache_sizes[2] * 8;
+}
 
 void flush_cache()
 {
