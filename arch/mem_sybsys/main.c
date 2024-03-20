@@ -12,6 +12,7 @@
 #include "exec_infra.h"
 
 double run_time;
+int min_iter;
 char *test, *modifier;
 ssize_t buf_size_focus;
 int get_cache_info;
@@ -23,6 +24,7 @@ void set_default_args()
     modifier = "";
     buf_size_focus = -1;
     get_cache_info = 0;
+    min_iter = 10;
 }
 
 void usage(char *cmd)
@@ -32,7 +34,8 @@ void usage(char *cmd)
     fprintf(stderr, "\t-h        Display this help\n");
     fprintf(stderr, "\t-i        Print cache information only\n");
     fprintf(stderr, "Test description:\n");
-    fprintf(stderr, "\t-r [arg]  Minimum run time of the test in seconds (the benchmark will adjust # of iterations (default: %.1lf)\n", run_time);
+    fprintf(stderr, "\t-r [arg]  Minimum run time of the test in seconds (the benchmark will adjust # of iterations, default: %.1lf)\n", run_time);
+    fprintf(stderr, "\t-a [arg]  Minimum number of iteraions (default: %d)\n", min_iter);
     fprintf(stderr, "\t-t [arg]  Test name (see the list below, default: %s)\n", test);
     fprintf(stderr, "\t-m [arg]  Test modifier if applicable (see the list below)\n");
     fprintf(stderr, "\t-s [arg]  Focus on specific buffer size\n");
@@ -48,7 +51,7 @@ void process_args(int argc, char **argv)
 
     set_default_args();
     
-    while((c = getopt(argc, argv, "hir:t:m:s:")) != -1) {
+    while((c = getopt(argc, argv, "hir:a:t:m:s:")) != -1) {
         switch (c) {
         case 'h':
             usage(argv[0]);
@@ -61,6 +64,11 @@ void process_args(int argc, char **argv)
             /* from the getopt perspective thrds is an optarg. Check that 
              * user haven't specified anything else */
             run_time = strtod(optarg, &tmp);
+            break;
+        case 'a':
+            /* from the getopt perspective thrds is an optarg. Check that 
+             * user haven't specified anything else */
+            min_iter = atoi(optarg);
             break;
         case 't':
             test = strdup(optarg);
@@ -121,6 +129,7 @@ int main(int argc, char **argv)
     desc.run_time = run_time;
     desc.test_arg = modifier;
     desc.focus_size = buf_size_focus;
+    desc.min_iter = min_iter;
     if (tests_exec(&cache, test, &desc)) {
         printf("Failed to execute test '%s'\n", test);
         

@@ -221,7 +221,7 @@ int run_buf_strided_access(cache_struct_t *cache, exec_infra_desc_t *desc)
 
             memset(data.buf, 1, data.buf_size);
 
-            ret = exec_loop(desc->run_time, cb, (void *)&data, &niter, &ticks);
+            ret = exec_loop(desc, cb, (void *)&data, &niter, &ticks);
             if (ret) {
                 return ret;
             }

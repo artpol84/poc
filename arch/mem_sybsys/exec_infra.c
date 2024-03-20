@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "arch.h"
 #include "exec_infra.h"
 
 #define MAX_TESTS 128
@@ -12,6 +13,42 @@ struct {
 } test_list[MAX_TESTS];
 int test_list_size = 0;
 
+
+int exec_loop(exec_infra_desc_t *desc, exec_loop_cb_t *cb, void *data,
+                uint64_t *out_iter, uint64_t *out_ticks)
+{
+    int i, niter = 0;
+    int ret = 0;
+    uint64_t start, end;
+    double cps = clck_per_sec();
+
+    /* estimate # of iterations */
+    start = rdtsc();
+    do {
+        ret += cb(data);
+        end = rdtsc();
+        niter++;
+    } while( (end - start)/cps < desc->run_time || niter < desc->min_iter);
+
+    if (ret) {
+        return ret;
+    }
+
+    /* Run the main measurement loop */
+    start = rdtsc();
+    for(i = 0; i < niter; i++) {
+        ret += cb(data);
+    }
+    end = rdtsc();
+
+    if (ret) {
+        return ret;
+    }
+    
+    *out_iter = niter;
+    *out_ticks = end - start;
+    return 0;
+}
 
 void tests_reg(char *name, char *descr, run_test_t *cb)
 {

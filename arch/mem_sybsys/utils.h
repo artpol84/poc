@@ -11,11 +11,6 @@
 
 #define ROUND_UP(x, b) (((x / b) + !!(x % b)) * b)
 
-typedef int (exec_loop_cb_t)(void *data);
-int exec_loop(double min_time, exec_loop_cb_t *cb, void *data,
-                uint64_t *out_iter, uint64_t *out_ticks);
-
-
 #define DO_1(op, buf, base_idx, val)        \
     buf[base_idx] op val;
 

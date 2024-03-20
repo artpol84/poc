@@ -39,7 +39,7 @@ int exec_one(cache_struct_t *cache, exec_infra_desc_t *desc, size_t bsize)
     memset(data.dst, 1, data.buf_size);
     memcpy(data.src, data.dst, data.buf_size);
 
-    ret = exec_loop(desc->run_time, cb_ucx_mem_bw, (void*)&data, &niter, &ticks);
+    ret = exec_loop(desc, cb_ucx_mem_bw, (void*)&data, &niter, &ticks);
     if (ret) {
         return ret;
     }
