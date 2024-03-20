@@ -150,7 +150,7 @@ int run_buf_strided_access(cache_struct_t *cache, exec_infra_desc_t *desc)
                     TEST_CACHE, tok);
             return -1;
         }
-        strcmp(op_name, tok);
+        strcpy(op_name, tok);
     }
 
     tok = strtok_r(NULL, ":", &tok_h);
