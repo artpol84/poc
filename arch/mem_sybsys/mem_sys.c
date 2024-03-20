@@ -104,7 +104,7 @@ int caches_detect_level(cache_struct_t *cache, size_t buf_size)
 {
     int i;
     for(i = 0; i < cache->nlevels; i++) {
-        if( buf_size < cache->cache_sizes[i]) {
+        if( buf_size <= cache->cache_sizes[i]) {
             return i;
         }
     }
