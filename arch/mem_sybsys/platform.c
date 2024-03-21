@@ -187,11 +187,11 @@ void topo_print_cores(topo_info_t *info)
     /* Output core info */
     for (i = 0; i < cinfo->count; i++) {
         topo_core_t *core = &cinfo->cores[i];
-        printf("core#%d: ", core->core_id);
+        printf("core#%d:\n", core->core_id);
         
         for (j = 0; j < cs->nlevels; j++) {
             if(core->cache_refs[j].valid) {
-                printf("[L%d sz=%zd refcnt=%d, frac=%zd]\n",
+                printf("\t[L%d sz=%zd refcnt=%d, frac=%zd]\n",
                         core->cache_refs[j].ref->level_id,
                         core->cache_refs[j].ref->size,
                         core->cache_refs[j].ref->refcnt,
@@ -286,17 +286,6 @@ int caches_finalize(cache_struct_t *cache)
     hwloc_topology_destroy(cache->topo.topology);
  
     return 0;
-}
-
-void caches_set_default(cache_struct_t *cache)
-{
-    cache->cl_size = 64;
-    cache->nlevels = 4;
-
-    cache->cache_sizes[0] = 32*1024;
-    cache->cache_sizes[1] = 1024*1024;
-    cache->cache_sizes[2] = 32*1024*1024;
-    cache->cache_sizes[3] = cache->cache_sizes[2] * 8;
 }
 
 void caches_output(cache_struct_t *cache, int verbose)
