@@ -5,7 +5,7 @@
 #include <unistd.h>
 
 #include "arch.h"
-#include "mem_sys.h"
+#include "platform.h"
 #include "utils.h"
 #include "ucx_mem_bw.h"
 #include "basic_access.h"
@@ -116,13 +116,10 @@ int main(int argc, char **argv)
 
     if (get_cache_info) {
         /* Exit without running the benchmark */
+        caches_output(&cache, 1);
         return 0;
-    }
-
-    /* In case discovery failed - use some default values */
-    if (!cache.nlevels) {
-        printf("Cache subsystem discovery failed - use defaults\n");
-        caches_set_default(&cache);
+    } else {
+        caches_output(&cache, 0);
     }
 
     printf("Executing '%s' benchmark\n", test);
@@ -135,72 +132,7 @@ int main(int argc, char **argv)
         
     }
 
-    // printf("\n");
-    // printf("===================================\n");
-    // printf("Recreate UCX memory BW performance:\n\n");
-    // run_ucx_mem_bw(&cache, run_time);
-
-
-    // printf("\n");
-    // printf("===================================\n");
-    // printf("Performance of '=' operation\n\n");
-
-    // printf("Loop unroll = 1\n");
-
-    // printf("Sequential access to a buffer:\n");
-    // run_buf_strided_access(&cache, run_time, 1, BACCESS_CB_NAME(assign, uint64_t, 1));
-
-    // printf("Strided access to a buffer (jumping over to the next cache line every access):\n");
-    // run_buf_strided_access(&cache, run_time, cache.cl_size, BACCESS_CB_NAME(assign, uint64_t, 1));
-
-    // printf("Loop unroll = 8\n");
-
-    // printf("Sequential access to a buffer:\n");
-    // run_buf_strided_access(&cache, run_time, 1, BACCESS_CB_NAME(assign, uint64_t, 8));
-
-    // printf("Strided access to a buffer (jumping over to the next cache line every access):\n");
-    // run_buf_strided_access(&cache, run_time, cache.cl_size, BACCESS_CB_NAME(assign, uint64_t, 8));
-
-
-    // printf("\n");
-    // printf("===================================\n");
-    // printf("Performance of '+=' operation\n\n");
-
-    // printf("Loop unroll = 1\n");
-
-    // printf("Sequential access to a buffer:\n");
-    // run_buf_strided_access(&cache, run_time, 1, BACCESS_CB_NAME(inc, uint64_t, 1));
-
-    // printf("Strided access to a buffer (jumping over to the next cache line every access):\n");
-    // run_buf_strided_access(&cache, run_time, cache.cl_size, BACCESS_CB_NAME(inc, uint64_t, 1));
-
-    // printf("Loop unroll = 8\n");
-
-    // printf("Sequential access to a buffer:\n");
-    // run_buf_strided_access(&cache, run_time, 1, BACCESS_CB_NAME(inc, uint64_t, 8));
-
-    // printf("Strided access to a buffer (jumping over to the next cache line every access):\n");
-    // run_buf_strided_access(&cache, run_time, cache.cl_size, BACCESS_CB_NAME(inc, uint64_t, 8));
-
-    // printf("\n");
-    // printf("===================================\n");
-    // printf("Performance of '*=' operation\n\n");
-
-    // printf("Loop unroll = 1\n");
-
-    // printf("Sequential access to a buffer:\n");
-    // run_buf_strided_access(&cache, run_time, 1, BACCESS_CB_NAME(mul, uint64_t, 1));
-
-    // printf("Strided access to a buffer (jumping over to the next cache line every access):\n");
-    // run_buf_strided_access(&cache, run_time, cache.cl_size, BACCESS_CB_NAME(mul, uint64_t, 1));
-
-    // printf("Loop unroll = 8\n");
-
-    // printf("Sequential access to a buffer:\n");
-    // run_buf_strided_access(&cache, run_time, 1, BACCESS_CB_NAME(mul, uint64_t, 8));
-
-    // printf("Strided access to a buffer (jumping over to the next cache line every access):\n");
-    // run_buf_strided_access(&cache, run_time, cache.cl_size, BACCESS_CB_NAME(mul, uint64_t, 8));
-
+    caches_finalize(&cache);
+    
     return 0;
 }

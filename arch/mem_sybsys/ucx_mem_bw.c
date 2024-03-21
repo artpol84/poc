@@ -4,7 +4,7 @@
 #include <sys/types.h>
 
 #include "arch.h"
-#include "mem_sys.h"
+#include "platform.h"
 #include "utils.h"
 #include "ucx_mem_bw.h"
 

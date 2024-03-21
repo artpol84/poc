@@ -7,7 +7,7 @@
 #include <sys/types.h>
 
 #include "arch.h"
-#include "mem_sys.h"
+#include "platform.h"
 #include "utils.h"
 #include "exec_infra.h"
 

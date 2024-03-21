@@ -1,7 +1,7 @@
 #ifndef TEST_INFRA_H
 #define TEST_INFRA_H
 
-#include "mem_sys.h"
+#include "platform.h"
 
 typedef struct {
     double run_time;
