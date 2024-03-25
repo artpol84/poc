@@ -9,9 +9,45 @@
 typedef struct {
     size_t stride;
     size_t buf_size;
-    void *buf;
-} baccess_cbdata_t;
+} baccess_data_t;
 
+typedef struct {
+    baccess_data_t *data;
+    void *buf;
+} baccess_priv_data_t;
+
+
+static int cb_baccess_init_priv(void *in_data, void **priv_data)
+{
+    baccess_priv_data_t *priv;
+
+    priv = calloc(1, sizeof(*priv));
+    assert(priv);
+    priv->data = in_data;
+    priv->buf = calloc(priv->data->buf_size, 1);
+    assert(priv->buf);
+
+    memset(priv->buf, 1, priv->data->buf_size);
+
+    *priv_data = priv;
+    return 0;
+}
+
+static int cb_baccess_fini_priv(void *priv_data)
+{
+     baccess_priv_data_t *priv = priv_data;
+
+    free(priv->buf);
+    free(priv);
+
+    return 0;
+}
+
+exec_callbacks_t baccess_cbs = {
+    .priv_init = cb_baccess_init_priv,
+    .priv_fini = cb_baccess_fini_priv,
+    .run = NULL
+};
 
 #define IDX_FORMULA(base_idx, stride, idx)  \
     ((base_idx) * (stride) + (k))
@@ -34,11 +70,11 @@ typedef struct {
     int                                                                \
     BACCESS_CB_NAME(prefix, type, unroll_ratio) (void *in_data)     \
     {                                                                   \
-        baccess_cbdata_t *data = (baccess_cbdata_t*)in_data;            \
-        type *buf = (type*)data->buf;                                   \
+        baccess_priv_data_t *priv_data = in_data;                       \
+        type *buf = (type*)priv_data->buf;                              \
         size_t esize = sizeof(type);                                    \
-        size_t ecnt = data->buf_size / esize;                           \
-        size_t stride = data->stride / esize;                           \
+        size_t ecnt = priv_data->data->buf_size / esize;                \
+        size_t stride = priv_data->data->stride / esize;                \
         size_t k, l;                                                    \
         for (k = 0; k < stride; k++)                                    \
         {                                                               \
@@ -104,25 +140,24 @@ static int
 exec_one(cache_struct_t *cache, exec_infra_desc_t *desc, size_t bsize, 
         size_t stride, size_t esize, exec_loop_cb_t *cb)
 {
-    uint64_t ticks;
+    uint64_t *ticks;
     uint64_t niter;
-    baccess_cbdata_t data;
+    baccess_data_t data;
     int ret;
-    int level = caches_detect_level(cache, bsize);
-    
+
+    /* Initialize private test data */
+    ticks = calloc(exec_get_ctx_cnt(desc), sizeof(ticks[0]));
     data.buf_size = bsize;
     data.stride = ROUND_UP(stride, esize);
-    data.buf = calloc(data.buf_size, 1);
+    baccess_cbs.run = cb;
 
-    memset(data.buf, 1, data.buf_size);
-
-    ret = exec_loop(desc, cb, (void *)&data, &niter, &ticks);
+    ret = exec_loop(desc, &baccess_cbs, (void *)&data, &niter, ticks);
     if (ret) {
         return ret;
     }
-    log_output(level, data.buf_size, bsize, niter, ticks);
-
-    free(data.buf);
+    
+    exec_log_data(cache, desc, bsize, bsize * 2, niter, ticks);
+    
     return 0;
 }
 
@@ -230,7 +265,7 @@ int run_buf_strided_access(cache_struct_t *cache, exec_infra_desc_t *desc)
         break;
     }
 
-    log_header();
+    exec_log_hdr();
 
     if (desc->focus_size > 0) {
         return exec_one(cache, desc,desc->focus_size, stride, esize, cb);

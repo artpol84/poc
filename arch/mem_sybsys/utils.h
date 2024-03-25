@@ -30,19 +30,4 @@
     DO_8(op, buf, (base_idx), val);         \
     DO_8(op, buf, (base_idx + 8), val);
 
-
-static inline
-void log_header()
-{
-    printf("[level]    [buf size]    [work set]  [iterations]       [ticks]   [BW (MB/s)]\n");
-}
-
-static inline
-void log_output(int clevel, size_t bsize, size_t wset, uint64_t niter, uint64_t ticks)
-{
-    printf("[%5d]%14zd%14zd%14llu%14llu%14.1lf\n",
-            clevel, bsize, wset, niter, ticks,
-                (bsize * niter)/(ticks/clck_per_sec())/1e6);
-}
-
 #endif

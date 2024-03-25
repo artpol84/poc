@@ -52,9 +52,9 @@ static inline int CAS(int64_t *addr, int64_t *oldval, int64_t newval)
 
 OPAL_ASM_MAKE_ATOMIC(int32_t, 32, add, "add", "w")
 
-static inline int32_t atomic_inc(int32_t *addr, int32_t value)
+static inline int32_t atomic_inc(volatile int32_t *addr, int32_t value)
 {
-    return _asm_atomic_fetch_add_32(addr, value) + value;
+    return _asm_atomic_fetch_add_32((int32_t*)addr, value) + value;
 }
 
 static inline int64_t _asm_atomic_swap_ldst(int64_t *addr, int64_t newval)

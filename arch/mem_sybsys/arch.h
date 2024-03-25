@@ -35,6 +35,22 @@ static inline void atomic_isync (void)
     ISYNC();
 }
 
+static void barrier_init(volatile int *ptr, int start) 
+{
+    *ptr = start;
+    atomic_mb();
+}
+
+static void barrier_wait(volatile int *ptr, int expect)
+{
+    /* Indicate that we have approached the barrier */
+    atomic_inc(ptr, 1);
+    atomic_wmb();
+
+    /* wait for all others to approach the barrier */
+    while(*ptr != expect) {}
+    atomic_mb();
+}
 
 
 #endif

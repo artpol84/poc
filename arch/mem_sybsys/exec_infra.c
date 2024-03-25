@@ -13,40 +13,142 @@ struct {
 } test_list[MAX_TESTS];
 int test_list_size = 0;
 
-
-int exec_loop(exec_infra_desc_t *desc, exec_loop_cb_t *cb, void *data,
-                uint64_t *out_iter, uint64_t *out_ticks)
+int exec_assign_res(cache_struct_t *cache, exec_infra_desc_t *desc, int nthreads)
 {
-    int i, niter = 0;
-    int ret = 0;
+    int i;
+
+    desc->mt.nthreads = nthreads;
+    desc->mt.ctxs = calloc(nthreads, sizeof(desc->mt.ctxs[0]));
+    assert(desc->mt.ctxs);
+    
+    for(i = 0; i < nthreads; i++) {
+        desc->mt.ctxs[i].ctx_id = i;
+        desc->mt.ctxs[i].desc = desc;
+        desc->mt.ctxs[i].core = &cache->topo.core_subs.cores[i];
+        desc->mt.ctxs[i].user_data = NULL;
+    }
+
+    return 0;
+}
+
+#if 0
+int exec_set_user_cb(exec_infra_desc_t *desc, exec_loop_cb_t *cb)
+{
+    desc->mt.cb = cb;
+    return 0;
+}
+#endif
+
+int exec_set_user_ctx(exec_infra_desc_t *desc, int ctx_id, void *data)
+{
+    desc->mt.ctxs[ctx_id].user_data = data;
+    return 0;
+}
+
+
+void *exec_loop_one(void *data)
+{
+    exec_thread_ctx_t * ctx = (exec_thread_ctx_t*)data;
+    exec_infra_desc_t *desc = ctx->desc;
+    exec_mt_ctx_t *mt = &desc->mt;
+    void *priv_data;
     uint64_t start, end;
     double cps = clck_per_sec();
+    int i, niter = 0, min_iter;
+    int ret = 0;
+    ctx->status = 0;
+    int barrier_no = 1;
+
+    /* bind ourself */
+
+    /* initialize private structure */
+    mt->cb->priv_init(mt->user_data, &priv_data);
+
+    /* ensure all threads are ready to execute the warmup */
+    barrier_wait(&mt->barrier, (barrier_no++) * mt->nthreads);
 
     /* estimate # of iterations */
     start = rdtsc();
     do {
-        ret += cb(data);
+        ret += mt->cb->run(priv_data);
         end = rdtsc();
         niter++;
     } while( (end - start)/cps < desc->run_time || niter < desc->min_iter);
 
     if (ret) {
-        return ret;
+        ctx->status = ret;
+        return NULL;
+    }
+    ctx->out_iter = niter;
+
+    /* ensure all threads are ready to execute the performance part */
+    barrier_wait(&mt->barrier, (barrier_no++) * mt->nthreads);
+
+    /* pick the largest iter */
+    ctx->min_iter = niter;
+    for(i = 0; i < mt->nthreads; i++) {
+        if (ctx->min_iter > mt->ctxs[i].out_iter) {
+            ctx->min_iter = mt->ctxs[i].out_iter;
+        }
+        if (niter < mt->ctxs[i].out_iter) {
+            niter = mt->ctxs[i].out_iter;
+        }
     }
 
     /* Run the main measurement loop */
     start = rdtsc();
     for(i = 0; i < niter; i++) {
-        ret += cb(data);
+        ret += mt->cb->run(priv_data);
     }
     end = rdtsc();
 
     if (ret) {
-        return ret;
+        ctx->status = ret;
+        return NULL;
     }
     
-    *out_iter = niter;
-    *out_ticks = end - start;
+    ctx->out_iter = niter;
+    ctx->out_ticks = end - start;
+
+    /* ensure all threads have completed the performance part */
+    barrier_wait(&mt->barrier, (barrier_no++) * mt->nthreads);
+
+
+    mt->cb->priv_fini(priv_data);
+
+    return NULL;
+}
+
+int exec_loop(exec_infra_desc_t *desc,
+              exec_callbacks_t *cbs, void *user_data,
+              uint64_t *out_iter, uint64_t *out_ticks)
+{
+    exec_mt_ctx_t *mt = &desc->mt;
+    pthread_t *threads;
+    int i;
+    
+    /* set the user-defined callback for thread routine usage */
+    mt->cb = cbs;
+    mt->user_data = user_data;
+
+    barrier_init(&mt->barrier, 0);
+
+    /* Start all requested threads */
+    threads = calloc(mt->nthreads, sizeof(threads[0]));
+    for(i = 0; i < mt->nthreads; i++) {
+        pthread_create(&threads[i], NULL, exec_loop_one, &mt->ctxs[i]);
+    }
+
+    /* Wait for the test to finish */
+    for(i = 0; i < mt->nthreads; i++) {
+        void *tmp;
+        pthread_join(threads[i], &tmp);
+    }
+
+    *out_iter = mt->ctxs[0].out_iter;
+    for(i = 0; i < mt->nthreads; i++) {
+        out_ticks[i] = mt->ctxs[i].out_ticks;
+    }
     return 0;
 }
 
@@ -62,7 +164,7 @@ void tests_reg(char *name, char *descr, run_test_t *cb)
     test_list_size++;
 }
 
-int tests_exec(cache_struct_t *cache, char *name, exec_infra_desc_t *desc)
+int exec_test(cache_struct_t *cache, char *name, exec_infra_desc_t *desc)
 {
     int i;
     run_test_t *cb = NULL;
@@ -89,4 +191,31 @@ void tests_print()
     for(i = 0; i < test_list_size; i++) {
         printf("%-20.20s%s\n", test_list[i].name, test_list[i].descr);
     }
+}
+
+
+void exec_log_data(cache_struct_t *cache, exec_infra_desc_t *desc, 
+                    size_t bsize, size_t wset, uint64_t niter, uint64_t *ticks)
+{
+    exec_mt_ctx_t *mt = &desc->mt;
+    int level = caches_detect_level(cache, wset);
+    int i;
+    uint64_t min_ticks, max_ticks, avg_ticks;
+
+    min_ticks = ticks[0];
+    max_ticks = ticks[0];
+    avg_ticks = ticks[0];
+    for(i = 0; i < mt->nthreads; i++) {
+        if (min_ticks > ticks[i]) {
+            min_ticks = ticks[i];
+        }
+        if (max_ticks < ticks[i]) {
+            max_ticks = ticks[i];
+        }
+        avg_ticks += ticks[i];
+    }
+
+    printf("[%5d]%14zd%14zd%14llu%14llu%14llu%14llu%14.1lf\n",
+            level, bsize, wset, niter, min_ticks, max_ticks, avg_ticks,
+                (bsize * niter /* * mt->nthreads*/)/(max_ticks/clck_per_sec())/1e6);
 }

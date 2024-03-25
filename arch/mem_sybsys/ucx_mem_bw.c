@@ -13,43 +13,79 @@
  * ------------------------------------------------------ */
 typedef struct {
     size_t buf_size;
-    void *src, *dst;
 } memcpy_data_t;
 
-int cb_ucx_mem_bw(void *in_data)
+typedef struct {
+    size_t size;
+    void *src, *dst;
+} memcpy_priv_data_t;
+
+
+int cb_ucx_mem_bw_init_priv(void *in_data, void **priv_data)
 {
-    memcpy_data_t *data = (memcpy_data_t *)in_data;
-    memcpy(data->src, data->dst, data->buf_size);
+    memcpy_priv_data_t *priv;
+
+    priv = calloc(1, sizeof(*priv));
+    assert(priv);
+    priv->size = ((memcpy_data_t*)in_data)->buf_size;
+    priv->src = calloc(priv->size, 1);
+    assert(priv->src);
+    priv->dst = calloc(priv->size, 1);
+    assert(priv->dst);
+
+    memset(priv->src, 1, priv->size);
+    memset(priv->dst, 1, priv->size);
+    memcpy(priv->src, priv->dst, priv->size);
+
+    *priv_data = priv;
     return 0;
 }
+
+int cb_ucx_mem_bw_fini_priv(void *priv_data)
+{
+    memcpy_priv_data_t *priv = priv_data;
+
+    free(priv->src);
+    free(priv->dst);
+    free(priv);
+
+    return 0;
+}
+
+static int cb_ucx_mem_bw_run(void *priv_data)
+{
+    memcpy_priv_data_t *priv = priv_data;
+    memcpy(priv->src, priv->dst, priv->size);
+    return 0;
+}
+
+exec_callbacks_t ucx_mem_bw_cbs = {
+    .priv_init = cb_ucx_mem_bw_init_priv,
+    .priv_fini = cb_ucx_mem_bw_fini_priv,
+    .run = cb_ucx_mem_bw_run
+};
 
 static int
 exec_one(cache_struct_t *cache, exec_infra_desc_t *desc, size_t bsize)
 {
     memcpy_data_t data;
-    int ret;
-    uint64_t ticks;
+    uint64_t *ticks;
     uint64_t niter;
-    /* As we are copying from one and saving to another, the footprint is 2x */
-    int level = caches_detect_level(cache, bsize * 2);
+    int ret;
 
+    /* Initialize test data */
+    ticks = calloc(exec_get_ctx_cnt(desc), sizeof(ticks[0]));
     data.buf_size = bsize;
-    data.src = calloc(data.buf_size, 1);
-    data.dst = calloc(data.buf_size, 1);
 
-    memset(data.src, 1, data.buf_size);
-    memset(data.dst, 1, data.buf_size);
-    memcpy(data.src, data.dst, data.buf_size);
-
-    ret = exec_loop(desc, cb_ucx_mem_bw, (void*)&data, &niter, &ticks);
+    ret = exec_loop(desc, &ucx_mem_bw_cbs, &data, &niter, ticks);
     if (ret) {
         return ret;
     }
     
-    log_output(level, data.buf_size, bsize * 2, niter, ticks);
-    
-    free(data.src);
-    free(data.dst);
+    exec_log_data(cache, desc, bsize, bsize * 2, niter, ticks);
+
+    free(ticks);
+
     return 0;
 }
 
@@ -57,7 +93,7 @@ int run_ucx_mem_bw(cache_struct_t *cache, exec_infra_desc_t *desc)
 {
     int i, ret;
 
-    log_header();
+    exec_log_hdr();
 
 
     if (desc->focus_size > 0) {

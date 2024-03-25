@@ -16,6 +16,7 @@ int min_iter;
 char *test, *modifier;
 ssize_t buf_size_focus;
 int get_cache_info;
+uint32_t nthreads;
 
 void set_default_args()
 {
@@ -25,6 +26,7 @@ void set_default_args()
     buf_size_focus = -1;
     get_cache_info = 0;
     min_iter = 10;
+    nthreads = 1;
 }
 
 void usage(char *cmd)
@@ -34,11 +36,12 @@ void usage(char *cmd)
     fprintf(stderr, "\t-h        Display this help\n");
     fprintf(stderr, "\t-i        Print cache information only\n");
     fprintf(stderr, "Test description:\n");
-    fprintf(stderr, "\t-r [arg]  Minimum run time of the test in seconds (the benchmark will adjust # of iterations, default: %.1lf)\n", run_time);
-    fprintf(stderr, "\t-a [arg]  Minimum number of iteraions (default: %d)\n", min_iter);
-    fprintf(stderr, "\t-t [arg]  Test name (see the list below, default: %s)\n", test);
-    fprintf(stderr, "\t-m [arg]  Test modifier if applicable (see the list below)\n");
-    fprintf(stderr, "\t-s [arg]  Focus on specific buffer size\n");
+    fprintf(stderr, "\t-p [arg]  Execute test on all (if no arg is given) or 'arg' available cores and report cumulative data\n");
+    fprintf(stderr, "\t-r <arg>  Minimum run time of the test in seconds (the benchmark will adjust # of iterations, default: %.1lf)\n", run_time);
+    fprintf(stderr, "\t-a <arg>  Minimum number of iteraions (default: %d)\n", min_iter);
+    fprintf(stderr, "\t-t <arg>  Test name (see the list below, default: %s)\n", test);
+    fprintf(stderr, "\t-m <arg>  Test modifier if applicable (see the list below)\n");
+    fprintf(stderr, "\t-s <arg>  Focus on specific buffer size\n");
     
     fprintf(stderr, "\tAvailable tests & modifiers:\n");
     tests_print();
@@ -51,7 +54,7 @@ void process_args(int argc, char **argv)
 
     set_default_args();
     
-    while((c = getopt(argc, argv, "hir:a:t:m:s:")) != -1) {
+    while((c = getopt(argc, argv, "hipr:a:t:m:s:")) != -1) {
         switch (c) {
         case 'h':
             usage(argv[0]);
@@ -59,6 +62,13 @@ void process_args(int argc, char **argv)
             break;
         case 'i':
             get_cache_info = 1;
+            break;
+        case 'p':
+            if (optarg) {
+                nthreads = atoi(optarg);
+            } else {
+                nthreads = USE_ALL_CORES;
+            }
             break;
         case 'r':
             /* from the getopt perspective thrds is an optarg. Check that 
@@ -96,7 +106,6 @@ error:
     exit(1);
 }
 
-
 int main(int argc, char **argv)
 {
     char *buf = NULL;
@@ -104,7 +113,7 @@ int main(int argc, char **argv)
     volatile uint64_t sum, val = 4;
     cache_struct_t cache;
     exec_infra_desc_t desc;
-
+ 
     
     tests_reg(TEST_UCX, TEST_UCX_DESCR, run_ucx_mem_bw); 
     tests_reg(TEST_CACHE, TEST_CACHE_DESCR, run_buf_strided_access);
@@ -122,17 +131,27 @@ int main(int argc, char **argv)
         caches_output(&cache, 0);
     }
 
+    if (nthreads == USE_ALL_CORES) {
+        nthreads = cache.topo.core_subs.count;
+    } else if (nthreads > cache.topo.core_subs.count) {
+        printf("Too many parallel threads requested (%u), only %d available. reset ...\n",
+                nthreads, cache.topo.core_subs.count);
+        nthreads = cache.topo.core_subs.count;
+    }
+
     printf("Executing '%s' benchmark\n", test);
     desc.run_time = run_time;
     desc.test_arg = modifier;
     desc.focus_size = buf_size_focus;
     desc.min_iter = min_iter;
-    if (tests_exec(&cache, test, &desc)) {
+    exec_assign_res(&cache, &desc, nthreads);
+
+    if (exec_test(&cache, test, &desc)) {
         printf("Failed to execute test '%s'\n", test);
         
     }
 
     caches_finalize(&cache);
-    
+
     return 0;
 }
