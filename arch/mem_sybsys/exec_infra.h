@@ -49,6 +49,7 @@ typedef struct exec_infra_desc_s {
     int min_iter;
     char *test_arg;
     ssize_t focus_size;
+    int bind_not_a_fail;
     exec_mt_ctx_t mt;
 } exec_infra_desc_t;
 

@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+extern int errno;
+#include <errno.h>
 
 #include "arch.h"
 #include "exec_infra.h"
@@ -48,7 +50,7 @@ int exec_set_user_ctx(exec_infra_desc_t *desc, int ctx_id, void *data)
 
 void *exec_loop_one(void *data)
 {
-    exec_thread_ctx_t * ctx = (exec_thread_ctx_t*)data;
+    exec_thread_ctx_t *ctx = (exec_thread_ctx_t*)data;
     exec_infra_desc_t *desc = ctx->desc;
     exec_mt_ctx_t *mt = &desc->mt;
     void *priv_data;
@@ -60,6 +62,21 @@ void *exec_loop_one(void *data)
     int barrier_no = 1;
 
     /* bind ourself */
+    ret = hwloc_set_cpubind(ctx->core->topo->topology, ctx->core->cpuset, 0);
+    if (ret) {
+        static int report = 1;
+        if (report) {
+            printf("Failed to bind a thread to the cpuset: errno = %s!\n",
+                strerror(errno));
+            report = 0;
+        }
+        if (!desc->bind_not_a_fail) {
+            ctx->status = ret;
+            return NULL;
+        }
+        /* mask the failure and move on */
+        ret = 0;
+    }
 
     /* initialize private structure */
     mt->cb->priv_init(mt->user_data, &priv_data);
@@ -126,6 +143,7 @@ int exec_loop(exec_infra_desc_t *desc,
     exec_mt_ctx_t *mt = &desc->mt;
     pthread_t *threads;
     int i;
+    int status = 0;
     
     /* set the user-defined callback for thread routine usage */
     mt->cb = cbs;
@@ -143,6 +161,20 @@ int exec_loop(exec_infra_desc_t *desc,
     for(i = 0; i < mt->nthreads; i++) {
         void *tmp;
         pthread_join(threads[i], &tmp);
+    }
+
+
+    for(i = 0; i < mt->nthreads; i++) {
+        if (mt->ctxs[i].status) {
+            printf("Thread %d failed with status %d\n", i, mt->ctxs[i].status);
+            if (!status) {
+                status = mt->ctxs[i].status;
+            }
+        }
+    }
+
+    if (status) {
+        return status;
     }
 
     *out_iter = mt->ctxs[0].out_iter;
@@ -205,7 +237,7 @@ void exec_log_data(cache_struct_t *cache, exec_infra_desc_t *desc,
     min_ticks = ticks[0];
     max_ticks = ticks[0];
     avg_ticks = ticks[0];
-    for(i = 0; i < mt->nthreads; i++) {
+    for(i = 1; i < mt->nthreads; i++) {
         if (min_ticks > ticks[i]) {
             min_ticks = ticks[i];
         }
@@ -217,5 +249,5 @@ void exec_log_data(cache_struct_t *cache, exec_infra_desc_t *desc,
 
     printf("[%5d]%14zd%14zd%14llu%14llu%14llu%14llu%14.1lf\n",
             level, bsize, wset, niter, min_ticks, max_ticks, avg_ticks,
-                (bsize * niter /* * mt->nthreads*/)/(max_ticks/clck_per_sec())/1e6);
+                (bsize * niter * mt->nthreads)/(max_ticks/clck_per_sec())/1e6);
 }

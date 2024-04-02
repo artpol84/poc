@@ -143,6 +143,7 @@ static int topo_discover_cores(topo_info_t *info)
         /* 1. init core info */
         core->core_id = obj->logical_index;
         core->cpuset = hwloc_bitmap_dup(obj->cpuset);
+        core->topo = info;
         /* 2. go up the hierarchy to analyze caches */
         for (; obj; obj = obj->parent) {
             if (hwloc_obj_type_is_cache(obj->type)) {

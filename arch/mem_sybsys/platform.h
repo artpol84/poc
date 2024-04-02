@@ -8,6 +8,7 @@
 #include <hwloc.h> 
 
 typedef struct topo_core_s topo_core_t;
+typedef struct topo_info_s topo_info_t;
 
 typedef struct {
     int level_id;
@@ -38,6 +39,7 @@ typedef struct {
 
 typedef struct topo_core_s {
     int core_id;
+    topo_info_t *topo;
     topo_core_cache_ref_t cache_refs[MEMSUBS_CACHE_LEVEL_MAX];
     hwloc_cpuset_t cpuset;
 } topo_core_t;
@@ -48,7 +50,7 @@ typedef struct {
     topo_core_t *cores;
 } topo_core_subs_t;
 
-typedef struct {
+typedef struct topo_info_s {
     hwloc_topology_t topology;
     int depth;
     topo_cache_subs_t cache_subs;
