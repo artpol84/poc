@@ -68,7 +68,7 @@ void *exec_loop_one(void *data)
     printf("Bind ctx id %d to logical idx = %d, cpuset=%s\n", ctx->ctx_id, ctx->core->core_id, cpuset_buf);
 }
 
-    ret = hwloc_set_cpubind(ctx->core->topo->topology, ctx->core->cpuset, 0);
+    ret = hwloc_set_cpubind(ctx->core->topo->topology, ctx->core->cpuset, HWLOC_CPUBIND_THREAD);
     if (ret) {
         static int report = 1;
         if (report) {
