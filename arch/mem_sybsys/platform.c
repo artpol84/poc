@@ -138,11 +138,14 @@ static int topo_discover_cores(topo_info_t *info)
 
     /* Iterate over cores */
     for (i = 0; i < cinfo->count; i++) {
+        char cpuset_buf[1024];
         core = &cinfo->cores[i];
         obj = hwloc_get_obj_by_depth(info->topology, cinfo->depth, i);
         /* 1. init core info */
         core->core_id = obj->logical_index;
         core->cpuset = hwloc_bitmap_dup(obj->cpuset);
+        hwloc_bitmap_taskset_snprintf (cpuset_buf, sizeof(cpuset_buf), core->cpuset);
+        printf("Core: logical idx = %d, cpuset=%s\n", core->core_id, cpuset_buf);
         core->topo = info;
         /* 2. go up the hierarchy to analyze caches */
         for (; obj; obj = obj->parent) {
