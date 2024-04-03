@@ -62,6 +62,12 @@ void *exec_loop_one(void *data)
     int barrier_no = 1;
 
     /* bind ourself */
+{
+    char cpuset_buf[1024];
+    hwloc_bitmap_taskset_snprintf (cpuset_buf, sizeof(cpuset_buf), ctx->core->cpuset);
+    printf("Bind ctx id %d to logical idx = %d, cpuset=%s\n", ctx->ctx_id, ctx->core->core_id, cpuset_buf);
+}
+
     ret = hwloc_set_cpubind(ctx->core->topo->topology, ctx->core->cpuset, 0);
     if (ret) {
         static int report = 1;
