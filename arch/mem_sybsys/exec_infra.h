@@ -50,6 +50,7 @@ typedef struct exec_infra_desc_s {
     char *test_arg;
     ssize_t focus_size;
     int bind_not_a_fail;
+    int debug, quiet;
     exec_mt_ctx_t mt;
 } exec_infra_desc_t;
 
@@ -74,9 +75,11 @@ void tests_print();
 int exec_test(cache_struct_t *cache, char *name, exec_infra_desc_t *desc);
 
 static inline
-void exec_log_hdr()
+void exec_log_hdr(exec_infra_desc_t *desc)
 {
-    printf("[level]    [buf size]    [work set]  [iterations]  [ticks(min)]  [ticks(max)] [ticks(avg)]   [BW (MB/s)]\n");
+    if (!desc->quiet) {
+        printf("[level]    [buf size]    [work set]  [iterations]  [ticks(min)]  [ticks(max)] [ticks(avg)]   [BW (MB/s)]\n");
+    }
 }
 
 void exec_log_data(cache_struct_t *cache, exec_infra_desc_t *desc, 

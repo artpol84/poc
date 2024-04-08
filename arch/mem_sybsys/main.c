@@ -26,15 +26,19 @@ int main(int argc, char **argv)
 
     args_common_process(argc, argv, &args);
 
-    printf("Freuency: %lf\n", clck_per_sec());
+    if (!args.quiet) {
+        printf("Freuency: %lf\n", clck_per_sec());
+    }
     caches_discover(&cache);
 
-    if (args.get_cache_info) {
-        /* Exit without running the benchmark */
-        caches_output(&cache, 1);
-        return 0;
-    } else {
-        caches_output(&cache, 0);
+    if (!args.quiet) {
+        if (args.get_cache_info) {
+            /* Exit without running the benchmark */
+            caches_output(&cache, 1);
+            return 0;
+        } else {
+            caches_output(&cache, 0);
+        }
     }
 
     if (args.nthreads == USE_ALL_CORES) {
@@ -45,13 +49,18 @@ int main(int argc, char **argv)
         args.nthreads = cache.topo.core_subs.count;
     }
 
-    printf("Executing '%s' benchmark\n", args.test);
+    if (!args.quiet) {
+        printf("Executing '%s' benchmark\n", args.test);
+        printf("nthreades = %d\n", args.nthreads);
+    }
+
+    desc.debug = args.debug;
+    desc.quiet = args.quiet;
     desc.run_time = args.run_time;
     desc.test_arg = args.modifier;
     desc.focus_size = args.buf_size_focus;
     desc.min_iter = args.min_iter;
     desc.bind_not_a_fail = args.bind_not_a_fail;
-    printf("nthreades = %d\n", args.nthreads);
     exec_assign_res(&cache, &desc, args.nthreads);
 
     if (exec_test(&cache, args.test, &desc)) {

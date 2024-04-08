@@ -113,6 +113,21 @@ exec_callbacks_t baccess_cbs = {
     DO_16(op, buf, IDX_FORMULA(l, stride, k), val); \
     BACCESS_CB_DEFINE_FOOTER
 
+#if 0
+#define BACCESS_CB(prefix, type, op, val, ...)      \
+    BACCESS_CB_DEFINE_HEADER(prefix, type, 1)       \
+    DO_##__VA_ARGS__(op, buf, IDX_FORMULA(l, stride, k), val);  \
+    BACCESS_CB_DEFINE_FOOTER
+
+
+// BACCESS_CB_1(assign, uint64_t, =, 0xFFFFFFFFL)
+BACCESS_CB(assign, uint64_t, =, 0xFFFFFFFFL, 1)
+BACCESS_CB(assign, uint64_t, =, 0xFFFFFFFFL, 2)
+BACCESS_CB(assign, uint64_t, =, 0xFFFFFFFFL, 4)
+BACCESS_CB(assign, uint64_t, =, 0xFFFFFFFFL, 8)
+BACCESS_CB(assign, uint64_t, =, 0xFFFFFFFFL, 16)
+#endif
+
 BACCESS_CB_1(assign, uint64_t, =, 0xFFFFFFFFL)
 BACCESS_CB_2(assign, uint64_t, =, 0xFFFFFFFFL)
 BACCESS_CB_4(assign, uint64_t, =, 0xFFFFFFFFL)
@@ -265,7 +280,7 @@ int run_buf_strided_access(cache_struct_t *cache, exec_infra_desc_t *desc)
         break;
     }
 
-    exec_log_hdr();
+    exec_log_hdr(desc);
 
     if (desc->focus_size > 0) {
         return exec_one(cache, desc,desc->focus_size, stride, esize, cb);

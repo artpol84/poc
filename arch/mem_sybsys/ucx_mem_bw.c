@@ -93,7 +93,7 @@ int run_ucx_mem_bw(cache_struct_t *cache, exec_infra_desc_t *desc)
 {
     int i, ret;
 
-    exec_log_hdr();
+    exec_log_hdr(desc);
 
 
     if (desc->focus_size > 0) {
