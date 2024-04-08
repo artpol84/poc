@@ -73,6 +73,8 @@ void *exec_loop_one(void *data)
     int barrier_no = 1;
     double start_ts, end_ts;
 
+    printf("%d: cps = %lf\n", ctx->core->core_id, cps);
+
     /* bind ourself */
     if (desc->debug) {
         char cpuset_buf[1024];
@@ -118,8 +120,10 @@ void *exec_loop_one(void *data)
     } while( (end - start)/cps < desc->run_time || niter < desc->min_iter);
     end_ts = GET_TS();
 
-#if 0 
-    printf("rdtsc time = %lf, clock time = %lf\n",
+#if 1 
+    printf("%d: ticks = %llu, rdtsc time = %lf, clock time = %lf\n",
+            ctx->core->core_id,
+            (end - start),
             ((end - start)/cps), end_ts - start_ts );
 #endif
 
