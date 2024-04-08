@@ -58,6 +58,7 @@ int exec_set_user_ctx(exec_infra_desc_t *desc, int ctx_id, void *data)
     return 0;
 }
 
+#define BATCH_ESTIM_TIME 0.1
 static uint64_t _estim_runtime(exec_infra_desc_t *desc, void *priv_data, int batch_size, double run_time, int *ret_out)
 {
     uint64_t start, end;
@@ -73,7 +74,7 @@ static uint64_t _estim_runtime(exec_infra_desc_t *desc, void *priv_data, int bat
         }
         niter += batch_size;
         end = rdtsc();
-    } while( (end - start)/cps < /*desc->*/run_time || niter < desc->min_iter);
+    } while( (end - start)/cps < run_time || niter < desc->min_iter);
 
     *ret_out = ret;
 
@@ -138,14 +139,14 @@ void *exec_loop_one(void *data)
 
     /* Estimate the batch size */
     batch_prev = 1;
-    niter_prev = _estim_runtime(desc, priv_data, batch_prev, 0.1, &ret);
+    niter_prev = _estim_runtime(desc, priv_data, batch_prev, BATCH_ESTIM_TIME, &ret);
     if (ret) {
         ctx->status = ret;
         return NULL;
     }
     for(batch = batch_prev * 2; batch <= 1024; batch *= 2) {
         double change_pers = 0;
-        niter = _estim_runtime(desc, priv_data, batch, 0.1, &ret);
+        niter = _estim_runtime(desc, priv_data, batch, BATCH_ESTIM_TIME, &ret);
         if (ret) {
             ctx->status = ret;
             return NULL;
@@ -163,7 +164,7 @@ void *exec_loop_one(void *data)
         niter_prev = niter;
         batch_prev = batch;
     }
-    ctx->batch = batch;
+    ctx->batch = batch_prev;
 
     /* ensure all threads figured the batch size */
     barrier_wait(&mt->barrier, (barrier_no++) * mt->nthreads);
