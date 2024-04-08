@@ -162,6 +162,8 @@ void *exec_loop_one(void *data)
     ctx->out_iter = niter;
     ctx->out_ticks = end - start;
 
+    printf("%d: [OUT] ticks %llu\n", ctx->core->core_id, ctx->out_ticks);
+
     /* ensure all threads have completed the performance part */
     barrier_wait(&mt->barrier, (barrier_no++) * mt->nthreads);
 
