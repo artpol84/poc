@@ -9,7 +9,9 @@ void args_init_common(common_args_t *args)
         .buf_size_focus = -1,
         .get_cache_info = 0,
         .min_iter = 10,
-        .nthreads = 1
+        .nthreads = 1,
+        .debug = 0,
+        .quiet = 0,
     };
 
     *args = ref_args;
@@ -23,6 +25,8 @@ void args_common_usage(char *cmd)
     fprintf(stderr, "Options: %s\n", cmd);
     fprintf(stderr, "\t-h        Display this help\n");
     fprintf(stderr, "\t-i        Print cache information only\n");
+    fprintf(stderr, "\t-d        Print extended debug\n");
+    fprintf(stderr, "\t-q        Quiet (not print any information)\n");
     fprintf(stderr, "Test description:\n");
     fprintf(stderr, "\t-b        Do not treat fail to bind as fatal error\n");
     fprintf(stderr, "\t-p [arg]  Execute test on all (if no arg is given) or 'arg' available cores and report cumulative data\n");
@@ -43,7 +47,7 @@ void args_common_process(int argc, char **argv, common_args_t *args)
 
     args_init_common(args);
     
-    while((c = getopt(argc, argv, "hibp:r:a:t:m:s:")) != -1) {
+    while((c = getopt(argc, argv, "hidqbp:r:a:t:m:s:")) != -1) {
         switch (c) {
         case 'h':
             args_common_usage(argv[0]);
@@ -51,6 +55,12 @@ void args_common_process(int argc, char **argv, common_args_t *args)
             break;
         case 'i':
             args->get_cache_info = 1;
+            break;
+        case 'd':
+            args->debug = 1;
+            break;
+        case 'q':
+            args->quiet = 1;
             break;
         case 'b':
             args->bind_not_a_fail = 1;

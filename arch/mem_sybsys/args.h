@@ -16,6 +16,8 @@ typedef struct common_args_s {
     int get_cache_info;
     uint32_t nthreads;
     int bind_not_a_fail;
+    int debug;
+    int quiet;
 } common_args_t;
 
 void args_common_usage(char *cmd);
