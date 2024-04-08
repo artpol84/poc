@@ -58,6 +58,25 @@ int exec_set_user_ctx(exec_infra_desc_t *desc, int ctx_id, void *data)
     return 0;
 }
 
+static uint64_t _estim_runtime(exec_infra_desc_t *desc, void *priv_data, int batch_size)
+{
+    uint64_t start, end;
+    double cps = clck_per_sec();
+    int niter = 0;
+    int i;
+    int ret = 0;
+
+    start = rdtsc();
+    do {
+        for (i = 0; i < batch_size; i++) {
+            ret += desc->mt.cb->run(priv_data);
+        }
+        niter += batch_size;
+        end = rdtsc();
+    } while( (end - start)/cps < desc->run_time || niter < desc->min_iter);
+
+    return niter;
+}
 
 void *exec_loop_one(void *data)
 {
@@ -66,12 +85,14 @@ void *exec_loop_one(void *data)
     exec_mt_ctx_t *mt = &desc->mt;
     void *priv_data;
     uint64_t start, end;
+    uint64_t prev_res;
     double cps = clck_per_sec();
-    int i, niter = 0, min_iter;
+    int i, niter = 0, niter_prev, min_iter;
     int ret = 0;
     ctx->status = 0;
     int barrier_no = 1;
     double start_ts, end_ts;
+    int batch = 1, batch_prev;
 
     printf("%d: cps = %lf\n", ctx->core->core_id, cps);
 
@@ -102,9 +123,22 @@ void *exec_loop_one(void *data)
     mt->cb->priv_init(mt->user_data, &priv_data);
 
     /* Warmup before the measurement */
-
     for(i = 0; i < 10; i++) {
         ret += mt->cb->run(priv_data);
+    }
+
+
+    /* Estimate the batch size */
+    batch_prev = 1;
+    niter_prev = _estim_runtime(desc, priv_data, batch_prev);
+    for(batch = batch_prev * 2; batch < 128; batch *= 2) {
+        double change_pers = 0;
+        niter = _estim_runtime(desc, priv_data, batch);
+
+        change_pers = (niter - niter_prev) / (double)niter_prev;
+        printf("%d: [1] batch = %d, niter_prev=%d, niter = %d, pers = %lf\n",
+                ctx->core->core_id,
+                batch, niter_prev, niter,  change_pers);
     }
 
     /* ensure all threads are ready to execute the warmup */
