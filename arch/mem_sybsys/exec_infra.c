@@ -3,11 +3,22 @@
 #include <string.h>
 extern int errno;
 #include <errno.h>
+#include <time.h>
 
 #include "arch.h"
 #include "exec_infra.h"
 
 #define MAX_TESTS 128
+
+#define GET_TS()                            \
+ ({                                         \
+    struct timespec ts;                     \
+    double ret;                             \
+    clock_gettime(CLOCK_MONOTONIC, &ts);    \
+    ret = ts.tv_sec + 1E-9 * ts.tv_nsec;    \
+    ret;                                    \
+})
+
 struct {
     char *name;
     char *descr;
@@ -60,6 +71,7 @@ void *exec_loop_one(void *data)
     int ret = 0;
     ctx->status = 0;
     int barrier_no = 1;
+    double start_ts, end_ts;
 
     /* bind ourself */
     if (desc->debug) {
@@ -87,16 +99,27 @@ void *exec_loop_one(void *data)
     /* initialize private structure */
     mt->cb->priv_init(mt->user_data, &priv_data);
 
+    /* Warmup before the measurement */
+
+    for(i = 0; i < 10; i++) {
+        ret += mt->cb->run(priv_data);
+    }
+
     /* ensure all threads are ready to execute the warmup */
     barrier_wait(&mt->barrier, (barrier_no++) * mt->nthreads);
 
     /* estimate # of iterations */
+    start_ts = GET_TS();
     start = rdtsc();
     do {
         ret += mt->cb->run(priv_data);
         end = rdtsc();
         niter++;
     } while( (end - start)/cps < desc->run_time || niter < desc->min_iter);
+    end_ts = GET_TS();
+    
+    printf("rdtsc time = %lf, clock time = %lf\n",
+            ((end - start)/cps), end_ts - start_ts );
 
     if (ret) {
         ctx->status = ret;
