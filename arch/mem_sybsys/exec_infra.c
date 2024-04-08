@@ -111,6 +111,7 @@ void *exec_loop_one(void *data)
     barrier_wait(&mt->barrier, (barrier_no++) * mt->nthreads);
 
     /* estimate # of iterations */
+    niter = 0;
     start_ts = GET_TS();
     start = rdtsc();
     do {
@@ -121,9 +122,28 @@ void *exec_loop_one(void *data)
     end_ts = GET_TS();
 
 #if 1 
-    printf("%d: ticks = %llu, rdtsc time = %lf, clock time = %lf\n",
+    printf("%d: [1] ticks = %llu, niter = %d, rdtsc time = %lf, clock time = %lf\n",
             ctx->core->core_id,
-            (end - start),
+            (end - start), niter,
+            ((end - start)/cps), end_ts - start_ts );
+#endif
+
+
+    /* estimate # of iterations */
+    niter = 0;
+    start_ts = GET_TS();
+    start = rdtsc();
+    do {
+        ret += mt->cb->run(priv_data);
+        end = rdtsc();
+        niter++;
+    } while( (end - start)/cps < desc->run_time || niter < desc->min_iter);
+    end_ts = GET_TS();
+
+#if 1 
+    printf("%d: [2] ticks = %llu, niter = %d, rdtsc time = %lf, clock time = %lf\n",
+            ctx->core->core_id,
+            (end - start), niter,
             ((end - start)/cps), end_ts - start_ts );
 #endif
 
