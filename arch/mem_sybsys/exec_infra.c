@@ -131,7 +131,7 @@ void *exec_loop_one(void *data)
     /* Estimate the batch size */
     batch_prev = 1;
     niter_prev = _estim_runtime(desc, priv_data, batch_prev);
-    for(batch = batch_prev * 2; batch < 128; batch *= 2) {
+    for(batch = batch_prev * 2; batch <= 128; batch *= 2) {
         double change_pers = 0;
         niter = _estim_runtime(desc, priv_data, batch);
 
