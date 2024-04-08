@@ -117,9 +117,11 @@ void *exec_loop_one(void *data)
         niter++;
     } while( (end - start)/cps < desc->run_time || niter < desc->min_iter);
     end_ts = GET_TS();
-    
+
+#if 0 
     printf("rdtsc time = %lf, clock time = %lf\n",
             ((end - start)/cps), end_ts - start_ts );
+#endif
 
     if (ret) {
         ctx->status = ret;
