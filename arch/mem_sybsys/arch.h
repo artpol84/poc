@@ -48,7 +48,7 @@ static void barrier_wait(volatile int *ptr, int expect)
     atomic_wmb();
 
     /* wait for all others to approach the barrier */
-    while(*ptr != expect) {}
+    while(*ptr < expect) {}
     atomic_mb();
 }
 
