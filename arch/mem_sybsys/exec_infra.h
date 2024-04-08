@@ -25,6 +25,7 @@ typedef struct {
     topo_core_t *core;
 
     /* private timing results */
+    int batch;
     uint64_t min_iter;
     uint64_t out_iter;
     uint64_t out_ticks;

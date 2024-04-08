@@ -58,7 +58,7 @@ int exec_set_user_ctx(exec_infra_desc_t *desc, int ctx_id, void *data)
     return 0;
 }
 
-static uint64_t _estim_runtime(exec_infra_desc_t *desc, void *priv_data, int batch_size)
+static uint64_t _estim_runtime(exec_infra_desc_t *desc, void *priv_data, int batch_size, int *ret_out)
 {
     uint64_t start, end;
     double cps = clck_per_sec();
@@ -74,6 +74,8 @@ static uint64_t _estim_runtime(exec_infra_desc_t *desc, void *priv_data, int bat
         niter += batch_size;
         end = rdtsc();
     } while( (end - start)/cps < desc->run_time || niter < desc->min_iter);
+
+    *ret_out = ret;
 
     return niter;
 }
@@ -126,67 +128,72 @@ void *exec_loop_one(void *data)
     for(i = 0; i < 10; i++) {
         ret += mt->cb->run(priv_data);
     }
+    if (ret) {
+        ctx->status = ret;
+        return NULL;
+    }
 
+    /* ensure all threads are ready to execute the warmup */
+    barrier_wait(&mt->barrier, (barrier_no++) * mt->nthreads);
 
     /* Estimate the batch size */
     batch_prev = 1;
-    niter_prev = _estim_runtime(desc, priv_data, batch_prev);
-    for(batch = batch_prev * 2; batch <= 128; batch *= 2) {
+    niter_prev = _estim_runtime(desc, priv_data, batch_prev, &ret);
+    if (ret) {
+        ctx->status = ret;
+        return NULL;
+    }
+    for(batch = batch_prev * 2; batch <= 1024; batch *= 2) {
         double change_pers = 0;
-        niter = _estim_runtime(desc, priv_data, batch);
+        niter = _estim_runtime(desc, priv_data, batch, &ret);
+        if (ret) {
+            ctx->status = ret;
+            return NULL;
+        }
 
+        /* If the effect of batching between timestamps is less than 5% -  */
         change_pers = (niter - niter_prev) / (double)niter_prev;
+        if (change_pers < 0.05) {
+            /* stick to the current batch size */
+            break;
+        }
         printf("%d: [1] batch = %d, niter_prev=%d, niter = %d, pers = %lf\n",
                 ctx->core->core_id,
                 batch, niter_prev, niter,  change_pers);
         niter_prev = niter;
         batch_prev = batch;
     }
+    ctx->batch = batch;
+
+    /* ensure all threads figured the batch size */
+    barrier_wait(&mt->barrier, (barrier_no++) * mt->nthreads);
+
+
+    /* pick the largest batch size */
+    batch = ctx->batch;
+    for(i = 0; i < mt->nthreads; i++) {
+        if (batch < mt->ctxs[i].batch) {
+            batch = mt->ctxs[i].batch;
+        }
+    }
+
+    if (desc->debug & (ctx->ctx_id == 0)) {
+        printf("Selected batch size is %d (batch size for ctx0 was %d)\n",
+                batch, ctx->batch);
+    }
 
     /* ensure all threads are ready to execute the warmup */
     barrier_wait(&mt->barrier, (barrier_no++) * mt->nthreads);
 
-    /* estimate # of iterations */
-    niter = 0;
+    /* final estimation of the # of iterations */
     start_ts = GET_TS();
-    start = rdtsc();
-    do {
-        ret += mt->cb->run(priv_data);
-        end = rdtsc();
-        niter++;
-    } while( (end - start)/cps < desc->run_time || niter < desc->min_iter);
+    niter = _estim_runtime(desc, priv_data, batch, &ret);
     end_ts = GET_TS();
-
-#if 1 
-    printf("%d: [1] ticks = %llu, niter = %d, rdtsc time = %lf, clock time = %lf\n",
-            ctx->core->core_id,
-            (end - start), niter,
-            ((end - start)/cps), end_ts - start_ts );
-#endif
-
-
-    /* estimate # of iterations */
-    niter = 0;
-    start_ts = GET_TS();
-    start = rdtsc();
-    do {
-        ret += mt->cb->run(priv_data);
-        end = rdtsc();
-        niter++;
-    } while( (end - start)/cps < desc->run_time || niter < desc->min_iter);
-    end_ts = GET_TS();
-
-#if 1 
-    printf("%d: [2] ticks = %llu, niter = %d, rdtsc time = %lf, clock time = %lf\n",
-            ctx->core->core_id,
-            (end - start), niter,
-            ((end - start)/cps), end_ts - start_ts );
-#endif
-
     if (ret) {
         ctx->status = ret;
         return NULL;
     }
+
     ctx->out_iter = niter;
 
     /* ensure all threads are ready to execute the performance part */
@@ -202,6 +209,9 @@ void *exec_loop_one(void *data)
             niter = mt->ctxs[i].out_iter;
         }
     }
+
+    /* ensure all threads have agreed on the number of iterations */
+    barrier_wait(&mt->barrier, (barrier_no++) * mt->nthreads);
 
     /* Run the main measurement loop */
     start = rdtsc();
