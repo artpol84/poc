@@ -139,6 +139,8 @@ void *exec_loop_one(void *data)
         printf("%d: [1] batch = %d, niter_prev=%d, niter = %d, pers = %lf\n",
                 ctx->core->core_id,
                 batch, niter_prev, niter,  change_pers);
+        niter_prev = niter;
+        batch_prev = batch;
     }
 
     /* ensure all threads are ready to execute the warmup */
