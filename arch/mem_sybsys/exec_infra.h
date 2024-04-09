@@ -75,14 +75,7 @@ void tests_reg(char *name, char *descr, run_test_t *cb);
 void tests_print();
 int exec_test(cache_struct_t *cache, char *name, exec_infra_desc_t *desc);
 
-static inline
-void exec_log_hdr(exec_infra_desc_t *desc)
-{
-    if (!desc->quiet) {
-        printf("[level]    [buf size]    [work set]  [iterations]  [ticks(min)]  [ticks(max)]  [ticks(avg)]   [BW (MB/s)]\n");
-    }
-}
-
+void exec_log_hdr(exec_infra_desc_t *desc);
 void exec_log_data(cache_struct_t *cache, exec_infra_desc_t *desc, 
                     size_t bsize, size_t wset, uint64_t niter, uint64_t *ticks);
 

@@ -328,6 +328,13 @@ void tests_print()
 }
 
 
+void exec_log_hdr(exec_infra_desc_t *desc)
+{
+    if (!desc->quiet) {
+        printf("[level]    [buf size]    [work set]  [iterations]  [ticks(min)]  [ticks(max)]  [ticks(avg)]  [BW-buf(MB/s)]  [BW-wset(MB/s)]\n");
+    }
+}
+
 void exec_log_data(cache_struct_t *cache, exec_infra_desc_t *desc, 
                     size_t bsize, size_t wset, uint64_t niter, uint64_t *ticks)
 {
@@ -349,7 +356,8 @@ void exec_log_data(cache_struct_t *cache, exec_infra_desc_t *desc,
         avg_ticks += ticks[i];
     }
 
-    printf("[%5d]%14zd%14zd%14llu%14llu%14llu%14llu%14.1lf\n",
+    printf("[%5d]%14zd%14zd%14llu%14llu%14llu%14llu%16.1lf%17.1lf\n",
             level, bsize, wset, niter, min_ticks, max_ticks, avg_ticks / mt->nthreads,
-                (bsize * niter * mt->nthreads)/(max_ticks/clck_per_sec())/1e6);
+                (bsize * niter * mt->nthreads)/(max_ticks/clck_per_sec())/1e6,
+                (wset * niter * mt->nthreads)/(max_ticks/clck_per_sec())/1e6);
 }
