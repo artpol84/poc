@@ -20,7 +20,7 @@ typedef struct {
 typedef struct {
     size_t size;
     int block_size;
-    void *src, *dst;
+    char *src, *dst;
 } memcpy_priv_data_t;
 
 
@@ -28,11 +28,13 @@ static int
 cb_mem_bw_init_priv(void *in_data, void **priv_data)
 {
     memcpy_priv_data_t *priv;
+    memcpy_data_t *data = in_data;
+    size_t i;
 
     priv = calloc(1, sizeof(*priv));
     assert(priv);
-    priv->size = ((memcpy_data_t*)in_data)->buf_size;
-    priv->block_size = ((memcpy_data_t*)in_data)->block_size;
+    priv->size = data->buf_size;
+    priv->block_size = data->block_size;
     priv->src = calloc(priv->size, 1);
     assert(priv->src);
     priv->dst = calloc(priv->size, 1);
@@ -42,6 +44,12 @@ cb_mem_bw_init_priv(void *in_data, void **priv_data)
     memset(priv->dst, 1, priv->size);
     memcpy(priv->src, priv->dst, priv->size);
 
+
+    for(i = 0; i < data->buf_size; i++) {
+        priv->src[i] = i;
+        priv->dst[i] = 0;
+    }
+
     *priv_data = priv;
     return 0;
 }
@@ -50,6 +58,12 @@ static int
 cb_mem_bw_fini_priv(void *priv_data)
 {
     memcpy_priv_data_t *priv = priv_data;
+    size_t i;
+    for(i = 0; i < priv->size; i++) {
+        if (priv->src[i] != priv->dst[i]) {
+            printf("Verification failed at %zd\n", i);
+        }
+    }
 
     free(priv->src);
     free(priv->dst);
@@ -88,7 +102,6 @@ int run_mem_bw_test(cache_struct_t *cache, exec_infra_desc_t *desc, exec_callbac
     int i, ret;
 
     exec_log_hdr(desc);
-
 
     if (desc->focus_size > 0) {
         return exec_one(cache, desc, desc->focus_size, cbs, block_size);
