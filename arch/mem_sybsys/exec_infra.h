@@ -79,7 +79,7 @@ static inline
 void exec_log_hdr(exec_infra_desc_t *desc)
 {
     if (!desc->quiet) {
-        printf("[level]    [buf size]    [work set]  [iterations]  [ticks(min)]  [ticks(max)] [ticks(avg)]   [BW (MB/s)]\n");
+        printf("[level]    [buf size]    [work set]  [iterations]  [ticks(min)]  [ticks(max)]  [ticks(avg)]   [BW (MB/s)]\n");
     }
 }
 
