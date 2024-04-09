@@ -350,6 +350,6 @@ void exec_log_data(cache_struct_t *cache, exec_infra_desc_t *desc,
     }
 
     printf("[%5d]%14zd%14zd%14llu%14llu%14llu%14llu%14.1lf\n",
-            level, bsize, wset, niter, min_ticks, max_ticks, avg_ticks,
+            level, bsize, wset, niter, min_ticks, max_ticks, avg_ticks / mt->nthreads,
                 (bsize * niter * mt->nthreads)/(max_ticks/clck_per_sec())/1e6);
 }
