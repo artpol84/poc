@@ -171,7 +171,7 @@ exec_one(cache_struct_t *cache, exec_infra_desc_t *desc, size_t bsize,
         return ret;
     }
     
-    exec_log_data(cache, desc, bsize, bsize * 2, niter, ticks);
+    exec_log_data(cache, desc, bsize, bsize, niter, ticks);
     
     return 0;
 }
