@@ -217,8 +217,10 @@ int run_buf_strided_access(cache_struct_t *cache, exec_infra_desc_t *desc)
         }
     }
 
-    printf("\t[modifiers: op=%s(%d), stride=%zd, unroll=%d]\n",
-            op_name, op_type, stride, unroll);
+    if (!desc->quiet) {
+        printf("\t[modifiers: op=%s(%d), stride=%zd, unroll=%d]\n",
+                op_name, op_type, stride, unroll);
+    }
 
     switch(op_type) {
     case OP_ASSIGN:
