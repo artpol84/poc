@@ -97,7 +97,7 @@ void *exec_loop_one(void *data)
     double start_ts, end_ts;
     int batch = 1, batch_prev;
 
-    printf("%d: cps = %lf\n", ctx->core->core_id, cps);
+    //printf("%d: cps = %lf\n", ctx->core->core_id, cps);
 
     /* bind ourself */
     if (desc->debug) {
@@ -158,9 +158,9 @@ void *exec_loop_one(void *data)
             /* stick to the current batch size */
             break;
         }
-        printf("%d: [1] batch = %d, niter_prev=%d, niter = %d, pers = %lf\n",
-                ctx->core->core_id,
-                batch, niter_prev, niter,  change_pers);
+        // printf("%d: [1] batch = %d, niter_prev=%d, niter = %d, pers = %lf\n",
+        //         ctx->core->core_id,
+        //         batch, niter_prev, niter,  change_pers);
         niter_prev = niter;
         batch_prev = batch;
     }
@@ -228,8 +228,6 @@ void *exec_loop_one(void *data)
     
     ctx->out_iter = niter;
     ctx->out_ticks = end - start;
-
-    printf("%d: [OUT] ticks %llu\n", ctx->core->core_id, ctx->out_ticks);
 
     /* ensure all threads have completed the performance part */
     barrier_wait(&mt->barrier, (barrier_no++) * mt->nthreads);
