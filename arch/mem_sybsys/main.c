@@ -22,6 +22,7 @@ int main(int argc, char **argv)
  
     
     tests_reg(TEST_UCX, TEST_UCX_DESCR, run_ucx_mem_bw); 
+    tests_reg(TEST_MBW, TEST_MBW_DESCR, run_mbw); 
     tests_reg(TEST_CACHE, TEST_CACHE_DESCR, run_buf_strided_access);
 
     args_common_process(argc, argv, &args);
