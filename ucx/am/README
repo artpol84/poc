@@ -1,0 +1,5 @@
+Compile with:
+ g++ ucx_utils.cpp ucx_am_test.cpp -g -o ucx_am_test -lucs -lucp
+
+Run with:
+ ./ucx_am_test
