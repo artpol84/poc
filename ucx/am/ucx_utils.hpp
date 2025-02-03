@@ -83,8 +83,8 @@ public:
     void rkey_destroy(nixl_ucx_rkey &rkey);
 
     /* Active message handling */
-    int reg_am_callback(uint16_t msg_id);
-    int send_am(nixl_ucx_ep &ep, uint16_t msg_id, void* buffer, size_t len, nixl_ucx_req &req);
+    int reg_am_callback(unsigned msg_id);
+    int send_am(nixl_ucx_ep &ep, unsigned msg_id, void* buffer, size_t len, nixl_ucx_req &req);
     int get_am_data(void* buffer, size_t &len);
 
     /* Data access */

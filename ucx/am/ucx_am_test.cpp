@@ -23,7 +23,7 @@ int main()
     uint64_t buffer[2];
     int ret, i;
 
-    uint8_t msg_id = 1;
+    unsigned msg_id = 1;
     size_t msg_len;
 
     buffer[0] = 0;
@@ -49,11 +49,15 @@ int main()
     assert(ret == 0);
 
     w[0].progress();
+    w[1].progress();
 
     ret = w[1].send_am(ep[1], msg_id, (void*) &(buffer[1]), sizeof(buffer[1]), req);
     assert(ret == 0);
 
-    while(ret == 0) ret = w[1].test(req);
+    while(ret == 0){
+	ret = w[1].test(req);
+	w[0].progress();
+    }
 
     std::cout << "active message sent, waiting...\n";
 
@@ -68,8 +72,6 @@ int main()
 
     /* Test shutdown */
     for(i = 0; i < 2; i++) {
-        w[i].rkey_destroy(rkey[i]);
-        w[i].mem_dereg(mem[i]);
         assert(0 == w[i].disconnect(ep[i]));
     }
 

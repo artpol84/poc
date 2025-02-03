@@ -16,7 +16,7 @@ nixl_ucx_worker::nixl_ucx_worker(std::vector<std::string> devs)
 
     ucp_params.field_mask = UCP_PARAM_FIELD_FEATURES | UCP_PARAM_FIELD_MT_WORKERS_SHARED |
                             UCP_PARAM_FIELD_ESTIMATED_NUM_EPS;
-    ucp_params.features = UCP_FEATURE_RMA | UCP_FEATURE_AMO32 | UCP_FEATURE_AMO64;
+    ucp_params.features = UCP_FEATURE_RMA | UCP_FEATURE_AMO32 | UCP_FEATURE_AMO64 | UCP_FEATURE_AM;
     ucp_params.mt_workers_shared = 1;
     ucp_params.estimated_num_eps = 3;
     ucp_config_read(NULL, NULL, &ucp_config);
@@ -267,10 +267,10 @@ ucs_status_t ucp_am_nixl_copy_callback(void *arg, const void *header,
     return UCS_OK;
 }
 
-int nixl_ucx_worker::reg_am_callback(uint16_t msg_id)
+int nixl_ucx_worker::reg_am_callback(unsigned msg_id)
 {
     ucs_status_t status;
-    ucp_am_handler_param_t params;
+    ucp_am_handler_param_t params = {0};
 
     params.field_mask = UCP_AM_HANDLER_PARAM_FIELD_ID |
                        UCP_AM_HANDLER_PARAM_FIELD_CB |
@@ -290,7 +290,7 @@ int nixl_ucx_worker::reg_am_callback(uint16_t msg_id)
     return 0;
 }
 
-int nixl_ucx_worker::send_am(nixl_ucx_ep &ep, uint16_t msg_id, void* buffer, size_t len, nixl_ucx_req &req)
+int nixl_ucx_worker::send_am(nixl_ucx_ep &ep, unsigned msg_id, void* buffer, size_t len, nixl_ucx_req &req)
 {
     ucs_status_ptr_t status;
     struct nixl_ucx_am_hdr hdr = {0};
