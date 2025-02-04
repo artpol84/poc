@@ -84,7 +84,7 @@ public:
     void rkey_destroy(nixl_ucx_rkey &rkey);
 
     /* Active message handling */
-    int reg_am_callback(ucp_am_recv_callback_t cb, void* arg, unsigned msg_id);
+    int reg_am_callback(unsigned msg_id, ucp_am_recv_callback_t cb, void* arg);
     int send_am(nixl_ucx_ep &ep, unsigned msg_id, void* buffer, size_t len, uint32_t flags, nixl_ucx_req &req);
     int get_rndv_data(void* data_desc, void* buffer, size_t len, const ucp_request_param_t *param, nixl_ucx_req &req);
 

@@ -238,7 +238,7 @@ void nixl_ucx_worker::rkey_destroy(nixl_ucx_rkey &rkey)
  * Active message handling
  * =========================================== */
 
-int nixl_ucx_worker::reg_am_callback(ucp_am_recv_callback_t cb, void* arg, unsigned msg_id)
+int nixl_ucx_worker::reg_am_callback(unsigned msg_id, ucp_am_recv_callback_t cb, void* arg)
 {
     ucs_status_t status;
     ucp_am_handler_param_t params = {0};

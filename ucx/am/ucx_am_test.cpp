@@ -14,6 +14,7 @@ ucs_status_t check_buffer (void *arg, const void *header,
 				           const ucp_am_recv_param_t *param)
 {
     struct nixl_ucx_am_hdr* hdr = (struct nixl_ucx_am_hdr*) header;
+    //TODO: is data 8 byte aligned?
     uint64_t recv_data = *((uint64_t*) data);
 
     if(hdr->whatever != 0xcee) 
@@ -102,13 +103,13 @@ int main()
     }
 
     /* Register active message callbacks */
-    ret = w[0].reg_am_callback(check_buffer, NULL, check_cb_id);
+    ret = w[0].reg_am_callback(check_cb_id, check_buffer, NULL);
     assert(ret == 0);
 
     w[0].progress();
     w[1].progress();
 
-    ret = w[0].reg_am_callback(rndv_test, &(w[0]), rndv_cb_id);
+    ret = w[0].reg_am_callback(rndv_cb_id, rndv_test, &(w[0]));
     assert(ret == 0);
     
     w[0].progress();
