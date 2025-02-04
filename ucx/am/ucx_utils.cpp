@@ -238,36 +238,7 @@ void nixl_ucx_worker::rkey_destroy(nixl_ucx_rkey &rkey)
  * Active message handling
  * =========================================== */
 
-ucs_status_t ucp_am_nixl_copy_callback(void *arg, const void *header,
-			               size_t header_length, void *data,
-				       size_t length, 
-				       const ucp_am_recv_param_t *param)
-{
-
-    struct nixl_ucx_am_hdr* hdr = (struct nixl_ucx_am_hdr*) header;
-    nixl_ucx_worker* am_worker = (nixl_ucx_worker*) arg;
-
-    if(hdr->whatever != 0xcee) 
-    {
-	return UCS_ERR_INVALID_PARAM;
-    }
-
-    if(am_worker->am_buf != NULL)
-    {
-	return UCS_ERR_NO_MEMORY;
-    }
-
-    am_worker->am_buf = calloc(1, length);
-    am_worker->am_len = length;
-
-    memcpy(am_worker->am_buf, data, length);
-
-    std::cout << "preparing buf " << am_worker->am_buf << "\n";
-
-    return UCS_OK;
-}
-
-int nixl_ucx_worker::reg_am_callback(unsigned msg_id)
+int nixl_ucx_worker::reg_am_callback(ucp_am_recv_callback_t cb, void* arg, unsigned msg_id)
 {
     ucs_status_t status;
     ucp_am_handler_param_t params = {0};
@@ -277,8 +248,8 @@ int nixl_ucx_worker::reg_am_callback(unsigned msg_id)
                        UCP_AM_HANDLER_PARAM_FIELD_ARG;
 
     params.id = msg_id;
-    params.arg = this;
-    params.cb = ucp_am_nixl_copy_callback;
+    params.cb = cb;
+    params.arg = arg;
 
     status = ucp_worker_set_am_recv_handler(worker, &params);
 
@@ -290,13 +261,16 @@ int nixl_ucx_worker::reg_am_callback(unsigned msg_id)
     return 0;
 }
 
-int nixl_ucx_worker::send_am(nixl_ucx_ep &ep, unsigned msg_id, void* buffer, size_t len, nixl_ucx_req &req)
+int nixl_ucx_worker::send_am(nixl_ucx_ep &ep, unsigned msg_id, void* buffer, size_t len, uint32_t flags, nixl_ucx_req &req)
 {
     ucs_status_ptr_t status;
-    struct nixl_ucx_am_hdr hdr = {0};
     ucp_request_param_t param = {0};
 
+    memset(&hdr, 0, sizeof(struct nixl_ucx_am_hdr));
     hdr.whatever = 0xcee;
+
+    param.op_attr_mask |= UCP_OP_ATTR_FIELD_FLAGS;
+    param.flags         = flags;
 
     status = ucp_am_send_nbx(ep.eph, msg_id, &hdr, sizeof(hdr), buffer, len, &param);
 
@@ -311,23 +285,20 @@ int nixl_ucx_worker::send_am(nixl_ucx_ep &ep, unsigned msg_id, void* buffer, siz
     return 0;
 }
 
-int nixl_ucx_worker::get_am_data(void* buffer, size_t &len)
+int nixl_ucx_worker::get_rndv_data(void* data_desc, void* buffer, size_t len, const ucp_request_param_t *param, nixl_ucx_req &req)
 {
-    if(am_buf == NULL) return 0;
-
-    std::cout << "getting from buf " << am_buf << "\n";
+    ucs_status_ptr_t status;
     
-    memcpy(buffer, am_buf, am_len);
-    len = am_len;
+    status = ucp_am_recv_data_nbx(worker, data_desc, buffer, len, param);
+    if(UCS_PTR_IS_ERR(status))
+    {
+        //TODO: error handling
+        return -1;
+    }
+    req.reqh = status;
 
-    free(am_buf);
-    am_buf = NULL;
-    am_len = 0;
-
-    return 1;
+    return 0;
 }
-
-
 
 /* ===========================================
  * Data transfer

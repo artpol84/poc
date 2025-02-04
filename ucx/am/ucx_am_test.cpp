@@ -6,10 +6,68 @@
 
 #include "ucx_utils.hpp"
 
-//TODO: meson conditional build for CUDA
-//#define USE_VRAM
-
 using namespace std;
+
+ucs_status_t check_buffer (void *arg, const void *header,
+   		                   size_t header_length, void *data,
+				           size_t length, 
+				           const ucp_am_recv_param_t *param)
+{
+    struct nixl_ucx_am_hdr* hdr = (struct nixl_ucx_am_hdr*) header;
+    uint64_t recv_data = *((uint64_t*) data);
+
+    if(hdr->whatever != 0xcee) 
+    {
+	    return UCS_ERR_INVALID_PARAM;
+    }
+
+    assert(length == 8);
+    assert(recv_data == 0xdeaddeaddeadbeef);
+
+    std::cout << "check_buffer passed\n";
+
+    return UCS_OK;
+}
+
+ucs_status_t rndv_test (void *arg, const void *header,
+   		                   size_t header_length, void *data,
+				           size_t length, 
+				           const ucp_am_recv_param_t *param)
+{
+
+    struct nixl_ucx_am_hdr* hdr = (struct nixl_ucx_am_hdr*) header;
+    void* recv_buffer = calloc(1, length);
+    nixl_ucx_worker* am_worker = (nixl_ucx_worker*) arg;
+    ucp_request_param_t recv_param = {0};
+    uint64_t check_data;
+    nixl_ucx_req req;
+    int ret = 0;
+
+    ucs_status_ptr_t status;
+
+    if(hdr->whatever != 0xcee) 
+    {
+	    return UCS_ERR_INVALID_PARAM;
+    }
+
+    std::cout << "rndv_test started\n";
+    
+    assert(param->recv_attr & UCP_AM_RECV_ATTR_FLAG_RNDV);
+   
+    ret = am_worker->get_rndv_data(data, recv_buffer, length, &recv_param, req);
+    assert(ret == 0);
+
+    while(ret == 0){
+	    ret = am_worker->test(req);
+    }
+
+    check_data = ((uint64_t*) recv_buffer)[0];
+    assert(check_data == 0xdeaddeaddeadbeef);
+
+    std::cout << "rndv_test passed\n";
+    
+    return UCS_OK;
+}
 
 int main()
 {
@@ -17,17 +75,17 @@ int main()
     devs.push_back("mlx5_0");
     nixl_ucx_worker w[2] = { nixl_ucx_worker(devs), nixl_ucx_worker(devs) };
     nixl_ucx_ep ep[2];
-    nixl_ucx_mem mem[2];
-    nixl_ucx_rkey rkey[2];
     nixl_ucx_req req;
-    uint64_t buffer[2];
+    uint64_t buffer;
     int ret, i;
 
-    unsigned msg_id = 1;
+    unsigned check_cb_id = 1, rndv_cb_id = 2;
     size_t msg_len;
 
-    buffer[0] = 0;
-    buffer[1] = 0xdeaddeaddeadbeef;
+    void* big_buffer = calloc(1, 8192);
+
+    buffer = 0xdeaddeaddeadbeef;
+    ((uint64_t*) big_buffer)[0] = 0xdeaddeaddeadbeef;
 
     /* Test control path */
     for(i = 0; i < 2; i++) {
@@ -43,32 +101,45 @@ int main()
         free((void*) addr);
     }
 
-    /* Test active message */
-
-    ret = w[0].reg_am_callback(msg_id);
+    /* Register active message callbacks */
+    ret = w[0].reg_am_callback(check_buffer, NULL, check_cb_id);
     assert(ret == 0);
 
     w[0].progress();
     w[1].progress();
 
-    ret = w[1].send_am(ep[1], msg_id, (void*) &(buffer[1]), sizeof(buffer[1]), req);
+    ret = w[0].reg_am_callback(rndv_test, &(w[0]), rndv_cb_id);
+    assert(ret == 0);
+    
+    w[0].progress();
+
+    /* Test first callback */
+    ret = w[1].send_am(ep[1], check_cb_id, (void*) &buffer, sizeof(buffer), 0, req);
     assert(ret == 0);
 
     while(ret == 0){
-	ret = w[1].test(req);
-	w[0].progress();
+	    ret = w[1].test(req);
+	    w[0].progress();
     }
 
-    std::cout << "active message sent, waiting...\n";
+    std::cout << "first active message complete\n";
 
-    ret = 0;
+    /* Test second callback */
+    uint32_t flags = 0;
+    flags |= UCP_AM_SEND_FLAG_RNDV;
+
+    ret = w[1].send_am(ep[1], rndv_cb_id, big_buffer, 8192, flags, req);
+    assert(ret == 0);
+
     while(ret == 0){
-        ret = w[0].get_am_data(&(buffer[0]), msg_len); 
-	w[0].progress();
+	    ret = w[1].test(req);
+	    w[0].progress();
     }
 
-    assert(msg_len == sizeof(uint64_t));
-    assert(buffer[0] == 0xdeaddeaddeadbeef);
+    std::cout << "second active message complete\n";
+
+    //make sure callbacks are complete
+    w[0].progress();
 
     /* Test shutdown */
     for(i = 0; i < 2; i++) {
