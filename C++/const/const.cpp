@@ -30,4 +30,6 @@ int main()
     outer t;
     
     t.test();
+    
+    std::cout << "Value = " << t.ptr->value << std::endl;
 }
